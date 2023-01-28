@@ -1061,9 +1061,23 @@ function start_menu()
 	_draw=menu_draw
 end
 
-anim_draw_list={}
+animations_list={}
+draw_objects_list={}
 
-function add_animation()
+function draw_objects()
+	
+end
+
+function add_draw_object(obj)
+	
+end
+
+function remove_draw_object(obj)
+	
+end
+
+
+function add_animation(new_anim)
 	
 end
 
