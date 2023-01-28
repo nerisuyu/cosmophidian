@@ -1137,7 +1137,7 @@ end
 
 
 
-function  explode_snake(a,c)
+function   explode_snake(a,c)
 	shake_explode(0.1)
 	for i=0,4 do
 	add_particle(
