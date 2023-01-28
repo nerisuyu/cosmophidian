@@ -532,10 +532,6 @@ function manage_player_collisions()
 	end
 end
 		
-		
-			
-				
-
 
 	
 function manage_collisions()
@@ -1016,52 +1012,48 @@ function start_game()
 						scale=1,
 						states={}
 						}
-ship.states={
-	turning=0,
- flying=false,
-	shooting=false,
-	laser=false,
-	parry=0,
-	parry_cd=0
+	ship.states={
+		turning=0,
+ 		flying=false,
+		shooting=false,
+		laser=false,
+		parry=0,
+		parry_cd=0
 	}
-
-tt=-1
-
-base_turning=0.03
-fly_turning=0.005
-laser_turning=0.003
-
-
-cam={x=0,y=0}
-laser={length=120,segments=9}
-stars={}
-enemies={}
-particles={}
-projectiles={}
-snakes={}
-dead_snakes={}
+	tt=-1
+	base_turning=0.03
+	fly_turning=0.005
+	laser_turning=0.003
+	cam={x=0,y=0}
+	laser={length=120,segments=9}
+	stars={}
+	enemies={}
+	particles={}
+	projectiles={}
+	snakes={}
+	dead_snakes={}
 	for i=0,0 do
 		for j=0,0 do
 		add_enemy({x=i*100,
-													y=j*100,
-													dx=0,
-													dy=0,
-													collider_r=10,
-													angle=0,
-													speed=0*randb(1,2)},
-													template_enemy)
+			y=j*100,
+			dx=0,
+			dy=0,
+			collider_r=10,
+			angle=0,
+			speed=0*randb(1,2)},
+			template_enemy)
 		end
 	end
 	add_snake(ship.x,
-											ship.y+300,8,15,20,100)
-		
+		ship.y+300,8,15,20,100)
 	add_stars()
+
 	_update60=game_update
 	_draw=game_draw
 end
 
 function start_menu()
-poke(0x5f2d, 1)
+	poke(0x5f2d, 1)
 	music(1)
 	camera()
 	cls(0)
@@ -1069,8 +1061,19 @@ poke(0x5f2d, 1)
 	_draw=menu_draw
 end
 
-anims={}
+anim_draw_list={}
 
+function add_animation()
+	
+end
+
+function update_animations()
+
+end
+
+function clear_animations()
+	
+end
 -->8
 //behaviour
 
