@@ -12,25 +12,20 @@ oh: freeze frame
     become invincible
     screen_shake
 
-snake body pushes back
-
-fix fazing through enemy
-
-
 invinc frames cap
 	based on the hitter?
 	the stronger the hit the longer
 	the invis?
 
-upd: have a hitbox
-					process invinc
-     can_die
-					fly/shoot
+fix snakes, segments
 
-fix snakes, segme
+new parry
 
-fix parry
-parriable/non parriable
+laser charging 
+
+main menu
+highscore 
+
 
 particle templates
 render particles only on screen
@@ -55,32 +50,39 @@ freeze_frame=0
 
 function _init()
 	start_menu()
-
-	
-	
 	
 	end
 
 function menu_draw()
+cls()
+print("cosmophidean",x,y,1+t()%15)
 
-print("cosmophidean",2,64,1+t()%15)
-print("bitch asss",2,80,1+t()%15)
 if stat(34)==1 then
 	spr(12,stat(32)-1,stat(33)-1)
 end
-for i=0,200 do
-	local x=rnd(128)
-	local y=rnd(128)
-	if pget(x-2,y)!=16 then
-	pset(x,y,pget(x-2,y))
-	pset(x,y-1,pget(x-2,y))
-	end
-end
+
 end
 
 function menu_update()
+	update_animations()
 	if btn(❎) then
-		start_game()
+		add_animation(function ()
+			for i=0,10 do
+				x+=0.5
+				yield()
+			end
+			for i=0,100 do
+				y+=0.02
+				yield()
+				end
+			for i=0,300 do
+				x+=cos(t())*(2*t()-2)/15
+				y+=sin(t())*(2*t()-2)/15
+				yield()
+				end
+			start_game()
+		end)
+		
 	end
 end
 
@@ -1053,6 +1055,8 @@ function start_game()
 end
 
 function start_menu()
+	x=0
+	y=32
 	poke(0x5f2d, 1)
 	music(1)
 	camera()
@@ -1065,7 +1069,9 @@ animations_list={}
 draw_objects_list={}
 
 function draw_objects()
-	
+	for d in all(draw_objects_list) do 
+		d.draw(d)
+	end
 end
 
 function add_draw_object(obj)
@@ -1078,15 +1084,23 @@ end
 
 
 function add_animation(new_anim)
-	
+	add(animations_list,cocreate(new_anim))
 end
 
 function update_animations()
-
+	if #animations_list>0 then 
+		for anim in all(animations_list) do 
+			if costatus(anim) != dead then
+				coresume(anim)
+			else 
+				del(animations_list,anim)
+			end
+		end
+	end
 end
 
 function clear_animations()
-	
+	animations_list={}
 end
 -->8
 //behaviour
