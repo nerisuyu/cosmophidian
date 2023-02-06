@@ -4,14 +4,13 @@ __lua__
       --[[
 todo
 
-main menu
-
 laser charging 
+
+fix phasing through snake using another enemy
 
 parry charge
 
-unlockable laser and parry
-
+on_parry
 ship on_hit's --done
 
 oh: freeze frame
@@ -33,6 +32,7 @@ smoke and explosions
 
 highscore 
 
+dx dy/speed angle on dissolve
 
 particle templates
 render particles only on screen
@@ -64,7 +64,12 @@ function start_menu()
 	game_starting=false
 	particles={}
 	play_btn_color=7
-	shp=add_draw_object({x=48,y=32,dx=0,dy=0},ship_d_o)
+	shp=add_object({x=48,
+		y=32,
+		dx=0,
+		dy=0,
+		group=draw_objects_list}
+		,ship_d_o)
 	poke(0x5f2d, 1)
 	music(1)
 	camera()
@@ -82,8 +87,7 @@ function menu_draw()
 	spr(112,10,54,-2+tt/2,3)
 	print("press ❎ to play",30,90,play_btn_color)
 	line(-6+8*tt/2,55,-6+8*tt/2,70,play_btn_color)
-
-	draw_draw_objects()
+	draw_all(draw_objects_list)
 end
 
 function menu_update()
@@ -134,7 +138,7 @@ function menu_update()
 				yield()
 			end
 			explode(shp)
-			clear_draw_objects()
+
 			start_game()
 		end)
 	end
@@ -188,20 +192,23 @@ function start_game()
 	projectiles={}
 	snakes={}
 	dead_snakes={}
-	for i=0,0 do
-		for j=0,0 do
-		add_enemy({x=i*100,
+	for i=0,1 do
+		for j=0,1 do
+		add_object({
+			group=enemies,
+			x=i*100,
 			y=j*100,
 			dx=0,
 			dy=0,
 			collider_r=10,
 			angle=0,
-			speed=0*randb(1,2)},
+			speed=0*randb(1,2),
+			group=enemies},
 			template_enemy)
 		end
 	end
-	add_snake(ship.x,
-		ship.y+300,8,15,20,100)
+	//add_snake(ship.x,
+	//	ship.y+300,8,15,20,100)
 	add_stars()
 
 	_update60=game_update
@@ -223,16 +230,7 @@ function game_update()
 	if ship.invincible>0 then
 		ship.invincible-=1
 	end	
-	if #snakes==0 and tt%10then
-		add_snake(ship.x,ship.y+300,11,11,20,1)
-		add_snake(ship.x,ship.y+300,11,11,20,1)
-		add_snake(ship.x,ship.y+300,11,11,20,1)
-		add_snake(ship.x,ship.y+300,11,11,20,1)
-		add_snake(ship.x,ship.y+300,11,11,20,1)
-		add_snake(ship.x,ship.y+300,11,11,20,1)
-		add_snake(ship.x,ship.y+300,11,11,20,1)
-		//add_snake(50,100,7,8,20,25)
-	end
+	
 
 	tt+=1
 	tt=tt%10000
@@ -337,8 +335,9 @@ function upd_ship()
 		//sfx(4)
 		for i=-0,0 do
 		shots+=1
-		add_projectile(
-									{x=ship.nosex,
+		add_object(
+									{	group=projectiles,
+										x=ship.nosex,
 										y=ship.nosey,
 										damage=10,
 										speed=2,
@@ -347,8 +346,8 @@ function upd_ship()
 										c2=background,
 										angle=ship.angle+0.05*i,
 										dx=ship.dx,
-										dy=ship.dy},
-										true,
+										dy=ship.dy,
+										friendly=true},
 										basic_bullet)
 																	end
 	end
@@ -818,21 +817,7 @@ function upd_particles()
 	end
 end
 
-function add_projectile(pos,
-																								friendly,
-																								template)
-	local p=table_clone(template)
-	p.created=tt
-	p.id=#projectiles+1
-	p.util=randb(-100,100)
-	p.friendly=friendly
-	
-	for key,obj in pairs(pos) do
-		p[key]=obj
-	end
-	
-	add(projectiles,p)																								
-end
+
 
 
 function draw_all(p)
@@ -871,18 +856,6 @@ end
 //test this
 
 
-function add_enemy(pos,	template)
-	local e=table_clone(template)
-	e.id=#enemies+1
-	e.util=randb(-100,100)
-	e.invincible=0
-	for key,obj in pairs(pos) do
-		e[key]=obj
-	end
-	add(enemies,e)							
-end
-
-//template
 
 
 
@@ -918,11 +891,11 @@ end
 
 
 function add_snake(x,
-																			y,
-																			c1,
-																			c2,
-																			hp,
-																			l)
+				y,
+				c1,
+				c2,
+				hp,
+				l)
 	local s={}
 	local snake_width=randb(5,8)
 	s.hp=hp
@@ -950,7 +923,7 @@ function add_snake(x,
 							d=randb(20,35),
 							a=0,
 							damage=5,
-							util=randb(-100,100)}
+							seed=randb(-100,100)}
 	add(s.segments,head)
 	ff=function(e,p)
 					if s.segments[1].invincible==0 then
@@ -1114,29 +1087,27 @@ end
 animations_list={}
 draw_objects_list={}
 
-function draw_draw_objects()
-	for d in all(draw_objects_list) do 
-		d.draw(d)
-	end
+
+function add_object(args,template)
+	local new_obj=table_clone(template)
+	table_merge(new_obj,args)
+	new_obj.seed=randb(-100,100)
+	add(new_obj.group,new_obj)
+	return new_obj
 end
 
-function clear_draw_objects()
-	draw_objects_list={}
+function clone_object(args,obj)
+	local new_obj=table_clone(obj)
+	table_merge(new_obj,args)
+	del(obj.group,obj)
+	add(new_obj.group,new_obj)
+	return new_obj
 end
 
-function add_draw_object(pos,template)
-	local d_o=table_clone(template)
-
-	for key,obj in pairs(pos) do
-		d_o[key]=obj
-	end
-	add(draw_objects_list,d_o)
-	return d_o
+function remove_object(obj)
+	del(obj.group,obj)
 end
 
-function remove_draw_object(pos,template)
-	
-end
 
 
 function add_animation(new_anim)
@@ -1167,7 +1138,7 @@ end
 
 function bh_hitbox(self)
 	if self.invincible==0 then
-		if self.group=="enemy" then
+		if self.group==enemies then
 			add_enemy_collider(self)
 		end
 		if self.friendly==true then
@@ -1240,7 +1211,7 @@ function fish_towards_ship(a)
 	
 	a.a=atan2(-a.x+ship.x,
 									-a.y+ship.y)+
-											sin(a.util/60+
+											sin(a.seed/60+
 											tt/150)/5
 	local as=sin(a.a)
 	local ac=cos(a.a)
@@ -1262,7 +1233,7 @@ function face_towards_ship_1(self)
 			self.angle-=0.003
 		end
 	local angle=self.angle+
-													sin(self.util/100+
+													sin(self.seed/100+
 													tt/150)/10
 	self.x+=cos(angle)*1
 	self.y+=sin(angle)*1
@@ -1283,12 +1254,12 @@ function face_towards_ship(a)
 			a.angle-=0.003
 		end
 	local angle=a.angle+
-													sin(a.util/100+
+													sin(a.seed/100+
 													tt/150)/10
 	a.x+=cos(angle)*a.speed
 	a.y+=sin(angle)*a.speed
 	
-	if (tt+a.util*2)%300==0 then
+	if (tt+a.seed*2)%300==0 then
 		shoot_at_player(a)
 	end
 	end
@@ -1312,8 +1283,8 @@ function dissolve(a)
 	add_particle(
 				a.x,
 				a.y,
-				a.dx+randb(-4,5)/20,
- 			a.dy+randb(-4,5)/20,
+				randb(-4,5)/20,
+ 			randb(-4,5)/20,
 				30,a.c1)
 	end
 end
@@ -1325,14 +1296,7 @@ function oh_take_damage(e,p)
 	end
 end
 
-function del_entity(self)
-	if self.group=="enemy" then
-		del(enemies,self)
-	else if self.group=="proj" then
-		del(projectiles,self)
-		end
-	end
-end
+
 
 
 
@@ -1346,79 +1310,63 @@ end
 function shoot_at_player(a)
 	offset=randb(0,100)/100
 	ang=atan2(-a.x+ship.x,
-											-a.y+ship.y)
+		-a.y+ship.y)
 	for i=-2,2 do
-	add_projectile(
-									{
-										x=a.x,
-										y=a.y,
-										radia=7,
-										util=i/3,
-										speed=1+randb(-2,2)/20,
-										c1=7,
-										c2=background,
-										angle=ang+randb(-2,2)/50,
-										dx=0,
-										dy=0},
-										false,
-										basic_bullet)
+
+	add_object(
+		{
+		group=projectiles,
+		friendly=false,
+		x=a.x,
+		y=a.y,
+		radia=7,
+		seed=i/3,
+		speed=1+randb(-2,2)/20,
+		c1=7,
+		c2=background,
+		angle=ang+randb(-2,2)/50,
+		dx=0,
+		dy=0},
+		basic_bullet)
+
 	end
 end
 
 
-function shoot_straight(a)
-	offset=randb(0,100)/100
-	for i=0,0 do
-	add_projectile(
-									{
-										x=a.x,
-										y=a.y,
-										radia=7,
-										util=i/3,
-										speed=3,
-										c1=2,
-										damage=5,
-										c2=background,
-										angle=a.angle,
-										dx=0,
-										dy=0},
-										false,
-										basic_bullet)
-	end
-end
 
 
 
 
 template_enemy={collider_r=5,
-							group="enemy",
-							sp=2,
-							c1=8,
-							c2=background,
-							hp=20,
-							speed=0.5,
-							damage=1,
-							is_parriable=true,
-							update={face_towards_ship,bh_hitbox},
-       draw=draw_debug,
-       on_hit={oh_take_damage},
-							on_death={explode,shoot_straight,del_entity}//explode}
-							}
+	invincible=0,
+	group=enemies,
+	sp=2,
+	c1=8,
+	c2=background,
+	hp=20,
+	speed=0.5,
+	damage=1,
+	is_parriable=true,
+	update={face_towards_ship,bh_hitbox},
+    draw=draw_debug,
+    on_hit={oh_take_damage},
+	on_death={explode,remove_object}
+	}
 							
 basic_bullet={
-							group="proj",
-							collider_r=3,
-							damage=1,
-							hp=200,
-							c1=12,
-							speed=4,
-							invincible=0,
-							is_parriable=true,
-							update={fly_straight,bh_hitbox,bh_tick_hp},
-       draw=draw_debug,
-       on_hit={explode},//,del_entity},
-							on_death={dissolve,del_entity}
-							}
+	group=projectiles,
+	collider_r=3,
+	damage=1,
+	hp=20,
+	c1=12,
+	speed=4,
+	invincible=0,
+	is_parriable=true,
+	update={fly_straight,bh_hitbox,bh_tick_hp},
+    draw=draw_debug,
+    on_hit={explode,remove_object},
+	on_death={dissolve,remove_object}
+	}
 	
 ship_d_o={
 		c=4,					
