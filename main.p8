@@ -189,8 +189,11 @@ function start_game()
 	list_projectiles={}
 	snakes={}
 	dead_snakes={}
+
+	add_object({group=list_enemies},template_snake)
+	//add_object({group=list_enemies},template_snake)
 	for i=0,1 do
-		for j=0,1 do
+		for j=0,-1 do
 		add_object({
 			group=list_enemies,
 			
@@ -233,7 +236,7 @@ function game_update()
 	tt+=1
 	tt=tt%10000
 	
-	manage_enemy_spawning()
+	//manage_enemy_spawning()
 	update_animations()
 	handle_input()
 	upd_ship()
@@ -878,6 +881,90 @@ end
 
 
 
+function bh_update_snake(self)
+	if self.segments==nil then
+		self.segments={}
+		self.segments2={}
+		ff=function(e,p)
+			if self.segments[1].invincible==0 then
+			self.hp-=p.damage
+			end
+			
+			self.segments[1].invincible=10
+		end
+		for i=0,self.l do
+			local segment={}
+			segment.seed=randb(-100,100)
+			segment.on_hit={ff,oh_knockback}
+			segment.x=self.x
+			segment.angle=0
+			segment.speed=1
+			segment.damage=4
+			segment.is_parriable=false
+			segment.y=self.y+10+i*10
+			segment.dx=0
+			segment.invincible=0
+			segment.dy=0
+			segment.collider_r=min(self.l-i+1,self.snake_width)
+			segment.c1=self.c1
+			add(self.segments,segment)
+			add(self.segments2,segment)
+		end
+		//tail color
+		self.segments[#self.segments].c1=self.c2
+		self.segments[#self.segments-1].c1=self.c2
+		self.segments[#self.segments-2].c1=self.c2
+		//head
+		self.segments[1].on_hit={fx_explode}
+	end
+	
+	local period=10
+	
+
+	for cc in all(self.segments) do
+		add_enemy_collider(cc)
+	end
+
+	for cc in all(self.segments) do
+		add_enemy_projectile_collider(cc)
+	end
+	
+	face_towards_ship(self.segments[1])
+	face_towards_ship(self)
+	if (tt%period==0) then
+		for i=1,#self.segments do
+			self.segments2[i]={}
+			self.segments2[i].x=self.segments[i].x
+			self.segments2[i].y=self.segments[i].y
+		end
+	else
+		for i=2,#self.segments do
+			self.segments[i].x=self.segments2[i].x+(tt%period)*(self.segments2[i-1].x-self.segments2[i].x)/period
+			self.segments[i].y=self.segments2[i].y+(tt%period)*(self.segments2[i-1].y-self.segments2[i].y)/period
+		end
+	end
+end
+
+
+function drw_snake(self)
+	if self.segments then
+
+	if self.segments[1].invincible>0 then
+		for i=2,#self.segments do
+			circfill(self.segments[i].x,self.segments[i].y,self.segments[i].collider_r+1,self.c2)
+		end
+	end
+	for i=2,#self.segments do
+		circfill(self.segments[i].x,self.segments[i].y,self.segments[i].collider_r,self.segments[i].c1)
+	end
+	pal(1,self.c1)
+	pal(12,self.c2)
+	rspr(7,	self.segments[1].x,self.segments[1].y,self.segments[1].angle,0,1)
+	print(self.segments[1].hp,self.segments[1].x+20,self.segments[1].y+20)
+	pal()
+end
+end
+
 
 
 
@@ -927,17 +1014,17 @@ function add_snake(x,
 	for i=0,l do
 		local segment={}
 		segment.on_hit={ff,oh_knockback}
-		segment.x=x
+		segment.x=self.x
 		segment.angle=0
 		segment.speed=0
 		segment.damage=4
 		segment.is_parriable=false
-		segment.y=y+10+i*10
+		segment.y=self.y+10+i*10
 		segment.dx=0
 		segment.invincible=0
 		segment.dy=0
 		segment.collider_r=min(l-i+1,snake_width)
-		segment.c1=c1
+		segment.c1=self.c1
  	add(s.segments,segment)
 	end
 	//red tail
@@ -971,7 +1058,7 @@ function update_dead_snakes()
 end
 
 function update_snakes()
-	local period=4
+	local period=6
 	
 	for s in all(snakes) do
 		if s.segments[1].invincible>0 then
@@ -987,11 +1074,12 @@ function update_snakes()
 			
 				add_enemy_projectile_collider(cc)
 			
-			end
+		end
 			
 		
-		if s.segments[1].hp>0 then
+		
 		face_towards_ship(s.segments[1])
+		face_towards_ship(self)
 		add_enemy_collider(s.segments[1])
 		if (tt%period==0) then
 			for i=1,#s.segments do
@@ -1014,11 +1102,7 @@ function update_snakes()
 				s.segments2[i].y)/period
 			end
 		end
-	else
-		del(snakes,s)
-		add(dead_snakes,s)
-		end
-		end
+	end
 end
 
 
@@ -1349,6 +1433,30 @@ function fx_ff(self)
 	freeze_frame+=10
 end
 
+template_snake={
+	x=0,
+	y=0,
+	dx=0,
+	dy=0,
+	speed=0.5,
+	angle=0,
+	volume=2,
+	collider_r=5,
+	invincible=0,
+	sp=2,
+	c1=8,
+	snake_width=10,
+	c2=background,
+	hp=20,
+	l=10,
+	damage=1,
+	is_parriable=true,
+	update={face_towards_ship,bh_hitbox,bh_update_snake},
+    draw=drw_snake,
+    on_hit={},
+	on_death={fx_explode,remove_object},
+	on_parry={fx_explode,fx_ff}
+	}
 
 template_basic_particle={
 	x=0,
