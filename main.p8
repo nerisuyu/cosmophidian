@@ -46,23 +46,17 @@ animations handler:
 	camera
 ]]--
 ship={}
-
 null=function() end
-
-
-
 background=13
-
 freeze_frame=0
 
 function _init()
-	start_menu()
-	
-	end
+	start_menu()	
+end
 
 function start_menu()
 	game_starting=false
-	particles={}
+	list_particles={}
 	play_btn_color=7
 	shp=add_object({x=48,
 		y=32,
@@ -82,7 +76,7 @@ end
 function menu_draw()
 	cls(2)
 
-	draw_particles()
+	//draw_particles()
 	pal(7,play_btn_color)
 	spr(112,10,54,-2+tt/2,3)
 	print("press ❎ to play",30,90,play_btn_color)
@@ -94,7 +88,8 @@ function menu_update()
 	tt+=1
 	tt=tt%10000
 	update_animations()
-	upd_particles()
+	//upd_particles()
+	--[[
 	add_particle(
 				shp.x,
 				shp.y-2,
@@ -109,6 +104,7 @@ function menu_update()
 				-4,
  				-1+sin(tt/167)/10,
 				min(10+3*tt,400),8)
+				]]
 	if btnp(❎) and not game_starting then
 		game_starting=true
 		add_animation(function ()
@@ -137,7 +133,7 @@ function menu_update()
 				shp.y+=0.6-i/2000
 				yield()
 			end
-			explode(shp)
+			fx_explode(shp)
 
 			start_game()
 		end)
@@ -151,16 +147,17 @@ function _update60()
 
 function start_game()
 	music(5)
+	enemy_volume_max=2
 	ship={x=64,y=64,dx=0,dy=0,
 						ax=0,ay=0,
 						hp=20,
-						collider_r=25,
+						collider_r=10,
 						damage=1,
 						angle=0.25,
 						c1=12,
 						invincible=0,
 						speed=0,
-						on_hit={explode,oh_take_damage},
+						on_hit={fx_explode,oh_take_damage},
 						
 						nosex=0,
 						nosey=0,
@@ -186,16 +183,17 @@ function start_game()
 	laser_turning=0.003
 	cam={x=0,y=0}
 	laser={length=120,segments=9}
-	stars={}
-	enemies={}
-	particles={}
-	projectiles={}
+	list_stars={}
+	list_enemies={}
+	list_particles={}
+	list_projectiles={}
 	snakes={}
 	dead_snakes={}
 	for i=0,1 do
 		for j=0,1 do
 		add_object({
-			group=enemies,
+			group=list_enemies,
+			
 			x=i*100,
 			y=j*100,
 			dx=0,
@@ -203,7 +201,7 @@ function start_game()
 			collider_r=10,
 			angle=0,
 			speed=0*randb(1,2),
-			group=enemies},
+			group=list_enemies},
 			template_enemy)
 		end
 	end
@@ -234,16 +232,18 @@ function game_update()
 
 	tt+=1
 	tt=tt%10000
+	
+	manage_enemy_spawning()
 	update_animations()
 	handle_input()
 	upd_ship()
 	update_all_entities()
 	update_snakes()
 	update_dead_snakes()
-	upd_particles()
+	//upd_particles()
 	manage_collisions()
 	manage_player_collisions()
-	clear_collision()
+	clear_collisions()
 	
 	end
 	
@@ -252,28 +252,27 @@ function game_update()
 	end
 end
 
-function _draw()
-end
+
 function game_draw()
 	cls(background)
-	
 	screen_shake()
 	camera(cam.x-64,cam.y-64)
 	draw_stars()
 	draw_dead_snakes()
 	draw_snakes()
-	draw_particles()
+	//draw_particles()
 	if freeze_frame >0 and ship.states.parry>0 then
 		fillp(0b1011111111111111.1)
 		circfill(ship.x,ship.y,5+150/freeze_frame,12)
 		fillp()
 	end
-	draw_all(projectiles)
-	draw_all(enemies)
+	draw_all(list_projectiles)
+	draw_all(list_particles)
+	draw_all(list_enemies)
 	
 	draw_ship()
 	//draw_collisions()
- //clear_collision()
+ 	//clear_collisions()
 	
 	--[[
 	print(#projectiles,cam.x-64,cam.y-10,7)
@@ -285,6 +284,7 @@ function game_draw()
 	]]--
 	//print(enemies[1][1].hp,ship.x,ship.y+20)
 	print(flr(ship.hp),ship.x+10,ship.y)
+	print(get_available_enemy_volume(list_enemies),0,0)
 	end
 
 shots=0
@@ -304,12 +304,14 @@ function upd_ship()
 	
 	if ship.states.flying then
 		//sfx(5)
-		add_particle(
-				ship.ass1x,
-				ship.ass1y,
-				ship.dx-40*ship.acc*cos(ship.angle)+randb(-3,4)/5,
- 			ship.dy-40*ship.acc*sin(ship.angle)+randb(-3,4)/5,
-				20,12)
+		add_object({group=list_particles,
+				x=ship.ass1x,
+				y=ship.ass1y,
+				dx=ship.dx-40*ship.acc*cos(ship.angle)+randb(-3,4)/5,
+				dy=ship.dy-40*ship.acc*sin(ship.angle)+randb(-3,4)/5,
+				hp=20,
+				c1=12},
+				template_basic_particle)
 
 		ship.turningd=fly_turning
 		ship.ay=ship.acc*sin(ship.angle) 
@@ -336,7 +338,7 @@ function upd_ship()
 		for i=-0,0 do
 		shots+=1
 		add_object(
-									{	group=projectiles,
+									{	group=list_projectiles,
 										x=ship.nosex,
 										y=ship.nosey,
 										damage=10,
@@ -348,7 +350,7 @@ function upd_ship()
 										dx=ship.dx,
 										dy=ship.dy,
 										friendly=true},
-										basic_bullet)
+										template_basic_bullet)
 																	end
 	end
 	
@@ -579,7 +581,7 @@ function add_friend_projectile_collider(p)
 		end
 end
 
-function clear_collision()
+function clear_collisions()
 	for i=1,cr_dimensions do
 		for j=1,cr_dimensions do
 			collision_regions[i][j].enemies={}
@@ -609,20 +611,10 @@ function collide_in_region(p,i,j)
 	end
 end
 	
-function parry(p)
-				
-				p.angle=0.5+p.angle
-				p.speed*=1
-				p.friendly=true
-				//p.t+=20
-				p.c1=7
-				
-				explode(p)
-				p.invincible=10
-				freeze_frame+=10
-				shake_explode(0.2)
-				sfx(3)
-
+function parry(self,other)
+	for op in all(self.on_parry) do
+		op(self,other)
+	end
 end
 	
 function manage_player_collisions()
@@ -632,7 +624,7 @@ function manage_player_collisions()
 		then
 			if p.is_parriable and 
 						p.invincible==0 then
-						parry(p)
+						parry(p,ship)
 			end
 		end
 			
@@ -749,6 +741,42 @@ function draw_collisions()
 	end
 end
 -->8
+
+function get_available_enemy_volume(list)
+	local enemy_volume_current=0
+	for e in all(list) do
+		enemy_volume_current+=e.volume
+	end
+	return enemy_volume_max-enemy_volume_current
+end
+
+
+function manage_enemy_spawning()
+	cram_enemy({group=list_enemies,
+			volume=1,
+			c1=5,
+			collider_r=8},
+		template_enemy)
+
+end
+
+function get_enemy_spawn_location()
+	local a={}
+	a.x=randb(-50,50)
+	a.y=randb(-50,50)
+	a.angle=randb(-10,10)
+	return a
+end
+
+function cram_enemy(args,template)
+	if get_table_combination(args,template).volume<
+	get_available_enemy_volume(get_table_combination(args,template).group)
+	then
+		add_object(get_table_combination(get_enemy_spawn_location(),args),template)
+	end
+end
+-->8
+//enemies and snakes
 //stars, particles and projectiles
 function add_stars()
 	for i=0,100 do
@@ -758,7 +786,7 @@ function add_stars()
 		star.d=randb(50,99)/100
 		star.c=7
 		star.move=randb(1,3)
-		add(stars,star)
+		add(list_stars,star)
 		end
 	for i=0,150 do
 		local star={}
@@ -767,14 +795,14 @@ function add_stars()
 		star.d=randb(3,20)/100
 		star.c=2
 		star.move=randb(1,3)
-		add(stars,star)
+		add(list_stars,star)
 		end
 end
 
 
 
 function draw_stars()
-	for i in all(stars) do
+	for i in all(list_stars) do
 		local x=i.x+cam.x*i.d
 		local y=i.y+cam.y*i.d
 		if x>cam.x+128 then i.x-=256 end
@@ -786,58 +814,12 @@ function draw_stars()
 	end
 end
 
-
-
-function add_particle(x,y,dx,dy,t,c)
-	local a={}
-	a.x=x
-	a.y=y
-	a.dx=dx
-	a.dy=dy
-	a.t=t
-	a.c=c
-	add(particles,a)
-end
-
-function draw_particles()
-	for a in all(particles) do
-		pset(a.x,a.y,a.c)
-		circfill(a.x,a.y,a.t/15,a.c)
-	end
-end
-
-function upd_particles()
-	for a in all(particles) do
-		a.x+=a.dx
-		a.y+=a.dy
-		a.t-=1
-		if a.t<0 then
-			del(particles,a)
-		end
-	end
-end
-
-
-
-
 function draw_all(p)
 	for a in all(p) do
 		a.draw(a)
 	end
 end
 
-function upd_all(p)
-	for a in all(p) do
-		for u in all(a.update) do
-			u(a)
-		end
-	end
-end
-
-
-
--->8
-//enemies and snakes
 
 
 function table_clone(org)
@@ -853,6 +835,12 @@ function table_merge(a,b)
   a[key] = value
 	end
 end
+
+function get_table_combination(extencion,base)
+	local tbl=table_clone(base)
+	table_merge(tbl,extencion)
+	return tbl
+end
 //test this
 
 
@@ -863,10 +851,13 @@ end
 
 
 function update_all_entities()
-	for a in all(enemies) do
+	for a in all(list_enemies) do
 		update_entity(a)
 	end
-	for a in all(projectiles) do
+	for a in all(list_projectiles) do
+		update_entity(a)
+	end
+	for a in all(list_particles) do
 		update_entity(a)
 	end
 end
@@ -909,6 +900,7 @@ function add_snake(x,
 	s.c2=c2
 	s.node_distance=1
 		head={x=x,
+				volume=1,
 							c1=8,
 							y=y,
 							r=5,
@@ -934,7 +926,7 @@ function add_snake(x,
 				end
 	for i=0,l do
 		local segment={}
-		segment.on_hit={ff,knockback}
+		segment.on_hit={ff,oh_knockback}
 		segment.x=x
 		segment.angle=0
 		segment.speed=0
@@ -957,7 +949,7 @@ function add_snake(x,
 	s.segments[#s.segments].c1=c2
 	s.segments[#s.segments-1].c1=c2
 	s.segments[#s.segments-2].c1=c2
-	s.segments[1].on_hit={explode,oh_take_damage}
+	s.segments[1].on_hit={fx_explode,oh_take_damage}
 							
 	add(snakes,s)
 end
@@ -1089,8 +1081,8 @@ draw_objects_list={}
 
 
 function add_object(args,template)
-	local new_obj=table_clone(template)
-	table_merge(new_obj,args)
+	new_obj=get_table_combination(args,template)
+
 	new_obj.seed=randb(-100,100)
 	add(new_obj.group,new_obj)
 	return new_obj
@@ -1138,13 +1130,15 @@ end
 
 function bh_hitbox(self)
 	if self.invincible==0 then
-		if self.group==enemies then
+		if self.group==list_enemies then
 			add_enemy_collider(self)
-		end
-		if self.friendly==true then
-			add_friend_projectile_collider(self)
-		else
 			add_enemy_projectile_collider(self)
+		else
+			if self.friendly==true then
+				add_friend_projectile_collider(self)
+			else
+				add_enemy_projectile_collider(self)
+			end
 		end
 	end
 end
@@ -1153,9 +1147,21 @@ function bh_tick_hp(self)
 	self.hp-=1
 end
 
+function oh_take_damage(e,p)
+	if e.invincible==0 then
+	e.hp-=p.damage
+	e.invincible=20
+	end
+end
 
-function draw_debug(self)
+function oh_knockback(e,p)
+	ang=atan2(-e.x+p.x,-e.y+p.y)
+	p.dx=cos(ang)*1
+	p.dy=sin(ang)*1
+end
 
+
+function drw_debug(self)
 	//print(self.damage,self.x,self.y+10)
 	circfill(self.x,self.y,
 						self.collider_r,
@@ -1163,8 +1169,8 @@ function draw_debug(self)
 	circfill(self.x,self.y,
 						self.collider_r-1,
 						self.c1)
-	//print(self.hp,self.x,
-	//					self.y,7)
+	print(self.hp,self.x,
+						self.y,0)
 	if self.invincible and 
 				self.invincible>0 then
 				fillp(0b0011011011001001.1)
@@ -1174,28 +1180,21 @@ function draw_debug(self)
 						2)
 				fillp()
 		end
-						
-	
-	
+	end
+
+function drw_circle(self)
+	circfill(self.x,self.y,self.hp/15,self.c1)
 	end
 
 
 
 
 
-function knockback(e,p)
-	ang=atan2(-e.x+p.x,
-											-e.y+p.y)
-	p.dx=cos(ang)*1
-	p.dy=sin(ang)*1
-end
 
 
 
 
-
-
-function   explode_snake(a,c)
+function explode_snake(a,c)
 	shake_explode(0.1)
 	for i=0,4 do
 	add_particle(
@@ -1266,35 +1265,39 @@ function face_towards_ship(a)
 	
 
 	
-function explode(a)
+function fx_explode(a)
 	shake_explode(0.2)
 	for i=0,10 do
-	add_particle(
-				a.x,
-				a.y,
-				a.dx+randb(-4,5)/20,
- 			a.dy+randb(-4,5)/20,
-				40,randb(7,12))
+
+	add_object({group=list_particles,
+				x=a.x,
+				y=a.y,
+				dx=a.dx+randb(-4,5)/20,
+				dy=a.dy+randb(-4,5)/20,
+				hp=40,
+				c1=randb(7,12)},
+				template_basic_particle)
+
+	
 	end
 end
 
-function dissolve(a)
+function fx_dissolve(a)
 	for i=0,5 do
-	add_particle(
-				a.x,
-				a.y,
-				randb(-4,5)/20,
- 			randb(-4,5)/20,
-				30,a.c1)
+	add_object({group=list_particles,
+		x=a.x,
+		y=a.y,
+		dx=a.dx+randb(-4,5)/20,
+		dy=a.dy+randb(-4,5)/20,
+		hp=40,
+		c1=a.c1},
+		template_basic_particle)
+
 	end
 end
 
-function oh_take_damage(e,p)
-	if e.invincible==0 then
-	e.hp-=p.damage
-	e.invincible=20
-	end
-end
+
+
 
 
 
@@ -1307,6 +1310,7 @@ end
 
 
 
+
 function shoot_at_player(a)
 	offset=randb(0,100)/100
 	ang=atan2(-a.x+ship.x,
@@ -1315,7 +1319,7 @@ function shoot_at_player(a)
 
 	add_object(
 		{
-		group=projectiles,
+		group=list_projectiles,
 		friendly=false,
 		x=a.x,
 		y=a.y,
@@ -1327,45 +1331,81 @@ function shoot_at_player(a)
 		angle=ang+randb(-2,2)/50,
 		dx=0,
 		dy=0},
-		basic_bullet)
+		template_basic_bullet)
 
 	end
 end
 
+function op_deflect_bullet(self,other)
+	self.angle=0.5+self.angle
+	self.friendly=true
+	self.hp+=20
+	self.c1=7
+	self.invincible=10
+	
+end
+
+function fx_ff(self)
+	freeze_frame+=10
+end
 
 
-
-
-
-template_enemy={collider_r=5,
+template_basic_particle={
+	x=0,
+	y=0,
+	dx=0,
+	dy=0,
+	c1=7,
+	angle=0,
+	speed=0,
 	invincible=0,
-	group=enemies,
+	volume=2,
+	update={fly_straight,bh_tick_hp},
+    draw=drw_circle,
+    on_hit={},
+	on_death={remove_object}
+}
+
+
+template_enemy={
+	x=0,
+	y=0,
+	dx=0,
+	dy=0,
+	speed=0.5,
+	angle=0,
+	volume=2,
+	collider_r=5,
+	invincible=0,
+	group=list_enemies,
 	sp=2,
 	c1=8,
 	c2=background,
 	hp=20,
-	speed=0.5,
+	
 	damage=1,
 	is_parriable=true,
 	update={face_towards_ship,bh_hitbox},
-    draw=draw_debug,
+    draw=drw_debug,
     on_hit={oh_take_damage},
-	on_death={explode,remove_object}
+	on_death={fx_explode,remove_object},
+	on_parry={fx_explode,fx_ff}
 	}
 							
-basic_bullet={
-	group=projectiles,
+template_basic_bullet={
+	group=list_projectiles,
 	collider_r=3,
 	damage=1,
-	hp=20,
+	hp=120,
 	c1=12,
 	speed=4,
 	invincible=0,
 	is_parriable=true,
 	update={fly_straight,bh_hitbox,bh_tick_hp},
-    draw=draw_debug,
-    on_hit={explode,remove_object},
-	on_death={dissolve,remove_object}
+    draw=drw_debug,
+    on_hit={fx_explode,remove_object},
+	on_death={fx_dissolve,remove_object},
+	on_parry={op_deflect_bullet,fx_explode,function ()sfx(3)end,fx_ff}
 	}
 	
 ship_d_o={
@@ -1375,7 +1415,7 @@ ship_d_o={
 		end
 		}
 
-ship.on_hit={explode,oh_take_damage}
+ship.on_hit={fx_explode,oh_take_damage}
 
 -->8
 //rspr, screenshake
