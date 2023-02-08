@@ -411,12 +411,14 @@ function draw_ship()
 													ship.angle,
 													laser.length,
 													false)
-		rspr(2,ship.x,
+		spr(2,ship.x,ship.y)
+		--[[rspr(2,ship.x,
 									ship.y,
 									ship.angle,
 									1,
-									ship.scale)
+									ship.scale)]]
 	else
+		//spr(2,ship.x,ship.y)
 		rspr(1,ship.x,
 									ship.y,
 									ship.angle,
@@ -460,7 +462,7 @@ function handle_input()
 		ship.states.parry_cd=60
 		end
 	end
-	if btn(❎) and tt%5==0 then
+	if btn(❎) and tt%10==0 then
 		ship.states.shooting=true
 	end
 end
@@ -791,7 +793,7 @@ function add_stars()
 		star.move=randb(1,3)
 		add(list_stars,star)
 		end
-	for i=0,150 do
+	for i=0,0 do
 		local star={}
 		star.x=randb(0,256)
 		star.y=randb(0,256)
@@ -812,8 +814,8 @@ function draw_stars()
 		if x<cam.x-128 then i.x+=256 end
 		if y>cam.y+128 then i.y-=256 end
 		if y<cam.y-128 then i.y+=256 end
-		pset(x,y,i.c)
-		circfill(x,y,0.5/i.d,i.c)
+		pset(flr(x*2)/2,flr(y),i.c)
+		circfill(flr(x*2)/2,flr(y*2)/2,0.5/i.d,i.c)
 	end
 end
 
@@ -912,16 +914,17 @@ function bh_update_snake(self)
 		self.segments[#self.segments-1].c1=self.c2
 		self.segments[#self.segments-2].c1=self.c2
 		//head
-		self.segments[1].on_hit={fx_explode}
+		self.segments[1].on_hit={}
 	end
 	
 	local period=10
 	
-
+	
 	for i=2,#self.segments do 
 		add_enemy_collider(self.segments[i])
 		add_enemy_projectile_collider(self.segments[i])
 	end
+	
 	
 	
 	
@@ -1221,16 +1224,14 @@ end
 //can die
 
 function bh_hitbox(self)
-	if self.invincible==0 then
-		if self.group==list_enemies then
-			add_enemy_collider(self)
-			add_enemy_projectile_collider(self)
+	if self.group==list_enemies then
+		add_enemy_collider(self)
+		add_enemy_projectile_collider(self)
+	else
+		if self.friendly==true then
+			add_friend_projectile_collider(self)
 		else
-			if self.friendly==true then
-				add_friend_projectile_collider(self)
-			else
-				add_enemy_projectile_collider(self)
-			end
+			add_enemy_projectile_collider(self)
 		end
 	end
 end
@@ -1278,13 +1279,14 @@ function drw_circle(self)
 	circfill(self.x,self.y,self.hp/15,self.c1)
 	end
 
-
-
-
-
-
-
-
+function drw_square(self)
+	//circfill(self.x,self.y,self.hp/15,self.c1)
+	rectfill(self.x+self.hp/30,
+		self.y+self.hp/30,
+		self.x-self.hp/30,
+		self.y-self.hp/30,
+		self.c1)
+	end
 
 function explode_snake(a,c)
 	shake_explode(0.1)
@@ -1359,19 +1361,50 @@ function face_towards_ship(a)
 	
 function fx_explode(a)
 	shake_explode(0.2)
-	for i=0,10 do
-
+	for i=0,3 do
+		add_object({group=list_particles,
+			x=a.x,
+			y=a.y,
+			dx=a.dx+randb(-4,5)/2,
+			dy=a.dy+randb(-4,5)/2,
+			hp=80,
+			sd_rate=0.8,
+			collider_r=10,
+			draw=drw_circle,
+			c1=2},
+			template_basic_particle)
+	end
+	for i=0,5 do
 	add_object({group=list_particles,
 				x=a.x,
 				y=a.y,
-				dx=a.dx+randb(-4,5)/20,
-				dy=a.dy+randb(-4,5)/20,
-				hp=40,
-				c1=randb(7,12)},
+				dx=a.dx+randb(-4,5)/5,
+				dy=a.dy+randb(-4,5)/5,
+				hp=50,
+				sd_rate=0.95,
+				draw=drw_circle,
+				c1=randb(8,12)},
 				template_basic_particle)
+	end
+		add_object({group=list_particles,
+				x=a.x,
+				y=a.y,
+				dx=a.dx,
+				dy=a.dy,
+				hp=5,
+				collider_r=6,
+					draw=drw_debug,
+				c1=7,
+				c2=7},
+				template_basic_particle)
+		yield()
+		
+	
+		
 
 	
-	end
+	
+	
 end
 
 function fx_dissolve(a)
@@ -1389,7 +1422,10 @@ function fx_dissolve(a)
 end
 
 
-
+function bh_slow_down(self)
+	self.dx*=self.sd_rate
+	self.dy*=self.sd_rate
+end
 
 
 
@@ -1479,11 +1515,13 @@ template_basic_particle={
 	speed=0,
 	invincible=0,
 	volume=2,
-	update={fly_straight,bh_tick_hp},
-    draw=drw_circle,
+	sd_rate=0.95,
+	update={fly_straight,bh_tick_hp,bh_slow_down},
+    draw=drw_square,
     on_hit={},
 	on_death={remove_object}
 }
+
 
 
 template_enemy={
@@ -1515,7 +1553,7 @@ template_basic_bullet={
 	group=list_projectiles,
 	collider_r=3,
 	damage=1,
-	hp=120,
+	hp=20,
 	c1=12,
 	speed=4,
 	invincible=0,
@@ -1523,7 +1561,7 @@ template_basic_bullet={
 	update={fly_straight,bh_hitbox,bh_tick_hp},
     draw=drw_debug,
     on_hit={fx_explode,remove_object},
-	on_death={fx_dissolve,remove_object},
+	on_death={fx_explode,remove_object},
 	on_parry={op_deflect_bullet,fx_explode,function ()sfx(3)end,fx_ff}
 	}
 	
@@ -1586,8 +1624,8 @@ function screen_shake()
 	offset_x*=offset
 	offset_y*=offset
 	
-	cam.x=ship.x+offset_x
-	cam.y=ship.y+offset_y
+	cam.x=flr(ship.x+offset_x)
+	cam.y=flr(ship.y+offset_y)
 	
 	offset_e*=fade
 	offset_g*=fade
