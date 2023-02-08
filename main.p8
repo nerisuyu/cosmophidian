@@ -13,7 +13,7 @@ parry charge
 on_parry
 ship on_hit's --done
 
-oh: freeze frame
+oh: frseeze frame
     take damage
     become invincible
     screen_shake
@@ -246,7 +246,7 @@ function game_update()
 	//upd_particles()
 	manage_collisions()
 	manage_player_collisions()
-	clear_collisions()
+	//clear_collisions()
 	
 	end
 	
@@ -275,7 +275,7 @@ function game_draw()
 	
 	draw_ship()
 	//draw_collisions()
- 	//clear_collisions()
+ 	clear_collisions()
 	
 	--[[
 	print(#projectiles,cam.x-64,cam.y-10,7)
@@ -885,12 +885,8 @@ function bh_update_snake(self)
 	if self.segments==nil then
 		self.segments={}
 		self.segments2={}
-		ff=function(e,p)
-			if self.segments[1].invincible==0 then
-			self.hp-=p.damage
-			end
-			
-			self.segments[1].invincible=10
+		ff=function(segment,other)
+			oh_take_damage(self,other)
 		end
 		for i=0,self.l do
 			local segment={}
@@ -909,6 +905,7 @@ function bh_update_snake(self)
 			segment.c1=self.c1
 			add(self.segments,segment)
 			add(self.segments2,segment)
+			
 		end
 		//tail color
 		self.segments[#self.segments].c1=self.c2
@@ -921,48 +918,59 @@ function bh_update_snake(self)
 	local period=10
 	
 
-	for cc in all(self.segments) do
-		add_enemy_collider(cc)
-	end
-
-	for cc in all(self.segments) do
-		add_enemy_projectile_collider(cc)
+	for i=2,#self.segments do 
+		add_enemy_collider(self.segments[i])
+		add_enemy_projectile_collider(self.segments[i])
 	end
 	
-	face_towards_ship(self.segments[1])
-	face_towards_ship(self)
+	
+	
+	
+	
+	
 	if (tt%period==0) then
-		for i=1,#self.segments do
-			self.segments2[i]={}
-			self.segments2[i].x=self.segments[i].x
-			self.segments2[i].y=self.segments[i].y
+		self.segments2[1]={
+			x=self.x,
+			y=self.y}
+		for i=2,#self.segments do
+			self.segments2[i]={
+				x=self.segments[i].x,
+				y=self.segments[i].y
+			}
 		end
 	else
+		self.segments[1].x=self.x
+		self.segments[1].y=self.y
 		for i=2,#self.segments do
 			self.segments[i].x=self.segments2[i].x+(tt%period)*(self.segments2[i-1].x-self.segments2[i].x)/period
 			self.segments[i].y=self.segments2[i].y+(tt%period)*(self.segments2[i-1].y-self.segments2[i].y)/period
 		end
 	end
+	
+	
 end
 
 
 function drw_snake(self)
 	if self.segments then
-
-	if self.segments[1].invincible>0 then
-		for i=2,#self.segments do
-			circfill(self.segments[i].x,self.segments[i].y,self.segments[i].collider_r+1,self.c2)
+		if self.invincible>0 then
+			for i=2,#self.segments do
+				circfill(self.segments[i].x,self.segments[i].y,self.segments[i].collider_r+2,self.c2)
+			end
 		end
+		for i=2,#self.segments do
+			circfill(self.segments[i].x,self.segments[i].y,self.segments[i].collider_r,self.segments[i].c1)
+		end
+		
+		for i=2,#self.segments do
+			line(self.segments[i-1].x,self.segments[i-1].y,self.segments[i].x,self.segments[i].y,7)
+		end
+		pal(1,self.c1)
+		pal(12,self.c2)
+		rspr(7,	self.x,self.y,self.angle,0,1)
+		print(self.hp,self.x+20,self.y+20)
+		pal()
 	end
-	for i=2,#self.segments do
-		circfill(self.segments[i].x,self.segments[i].y,self.segments[i].collider_r,self.segments[i].c1)
-	end
-	pal(1,self.c1)
-	pal(12,self.c2)
-	rspr(7,	self.segments[1].x,self.segments[1].y,self.segments[1].angle,0,1)
-	print(self.segments[1].hp,self.segments[1].x+20,self.segments[1].y+20)
-	pal()
-end
 end
 
 
@@ -1253,7 +1261,7 @@ function drw_debug(self)
 	circfill(self.x,self.y,
 						self.collider_r-1,
 						self.c1)
-	print(self.hp,self.x,
+	print(self.hp,self.x+10,
 						self.y,0)
 	if self.invincible and 
 				self.invincible>0 then
@@ -1392,6 +1400,10 @@ function fly_straight(a)
 	a.y+=a.dy+sin(a.angle)*a.speed
 end
 
+function fly_shitass(a)
+	a.angle=sin(t()/1000)
+end
+
 
 
 
@@ -1426,7 +1438,6 @@ function op_deflect_bullet(self,other)
 	self.hp+=20
 	self.c1=7
 	self.invincible=10
-	
 end
 
 function fx_ff(self)
@@ -1446,14 +1457,14 @@ template_snake={
 	sp=2,
 	c1=8,
 	snake_width=10,
-	c2=background,
-	hp=20,
-	l=10,
+	c2=12,
+	hp=80,
+	l=100,
 	damage=1,
 	is_parriable=true,
-	update={face_towards_ship,bh_hitbox,bh_update_snake},
+	update={fly_shitass,fly_straight,bh_hitbox,bh_update_snake},
     draw=drw_snake,
-    on_hit={},
+    on_hit={oh_take_damage},
 	on_death={fx_explode,remove_object},
 	on_parry={fx_explode,fx_ff}
 	}
