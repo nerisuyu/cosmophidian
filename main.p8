@@ -51,7 +51,8 @@ background=13
 freeze_frame=0
 
 function _init()
-	start_menu()	
+	start_menu()
+	cam={x=0,y=0}
 end
 
 function start_menu()
@@ -192,11 +193,12 @@ function _update60()
 function start_game()
 	music(5)
 	enemy_volume_max=7
+	despawn_distance=150
 	ship={x=64,y=64,dx=0,dy=0,
 						ax=0,ay=0,
 						hp=20,
 						collider_r=10,
-						damage=1,
+						damage=5,
 						angle=0.25,
 						c1=12,
 						invincible=0,
@@ -208,7 +210,7 @@ function start_game()
 						acc=0.07,
 						lacc=0.008,
 						dcc=0.005,
-						turningd=0.1,
+						turning_d=0.1,
 						maxspeed=1.4,
 						scale=1,
 						states={}
@@ -217,13 +219,17 @@ function start_game()
 		turning=0,
  		flying=false,
 		shooting=false,
+		shooting_cd=0,
+		shooting_cd_value=8,
 		laser=false,
 		parry=0,
-		parry_cd=0
+		parry_cd=0,
+		parry_cd_value=40,
 	}
 	tt=-1
 	base_turning=0.03
 	fly_turning=0.005
+	shoot_turning=0.02
 	laser_turning=0.003
 	cam={x=0,y=0}
 	laser={length=120,segments=9}
@@ -233,35 +239,7 @@ function start_game()
 	list_projectiles={}
 
 
-	add_object({
-		group=list_enemies,
-		x=0,
-		y=0,
-		dx=0,
-		dy=0,
-		collider_r=10,
-		angle=0,
-		group=list_enemies},
-		template_enemy)
-
-	add_object({
-		group=list_enemies,
-		x=20,
-		y=0,
-		dx=0,
-		dy=0,
-		collider_r=5,
-		angle=0,
-		group=list_enemies},
-		template_enemy)
-	for i=0,5 do
-	add_object({
-		group=list_enemies,
-		x=40,
-		y=0,
-		group=list_enemies},
-		template_enemy_fish)
-	end
+	
 	add_stars()
 
 	_update60=game_update
@@ -325,20 +303,25 @@ function game_draw()
 	print(ship.states.parry,ship.x+32,ship.y+32)
 	]]--
 	//print(enemies[1][1].hp,ship.x,ship.y+20)
-	print(flr(ship.hp),ship.x+10,ship.y)
-	print(get_available_enemy_volume(list_enemies),0,0)
+	print(ship.hp,ship.x+10,ship.y)
+	print(get_available_enemy_volume(list_enemies),ship.x+30,ship.y+20,12)
+	print(#list_enemies,ship.x+30,ship.y+40,15)
 	end
-
-shots=0
 -->8
 //ship update and input
 //laser
 
 function upd_ship()
-	ship.turningd=base_turning
+	ship.states.parry_cd-=1
+	ship.states.shooting_cd-=1
+
+	ship.turning_d=base_turning
 	
+	if ship.states.shooting then
+		ship.turning_d=shoot_turning
+	end
+
 	if ship.states.parry>0 then
-		
 		ship.states.parry-=1
 		ship.states.laser=false
 		ship.states.shooting=false
@@ -355,15 +338,16 @@ function upd_ship()
 				c1=12},
 				template_basic_particle)
 
-		ship.turningd=fly_turning
+		ship.turning_d=fly_turning
 		ship.ay=ship.acc*sin(ship.angle) 
- 	ship.ax=ship.acc*cos(ship.angle) 
+		 ship.ax=ship.acc*cos(ship.angle) 
 	end
+	
 	
 	if ship.states.laser then
 		//sfx(1)
 		shake_gun(0.1)
-		ship.turningd=laser_turning
+		ship.turning_d=laser_turning
 		fire_laser(
 			ship.nosex,
 			ship.nosey,
@@ -375,28 +359,34 @@ function upd_ship()
 		ship.ax-=ship.lacc*cos(ship.angle) 
 	end
 	
-	if ship.states.shooting then
-		//sfx(4)
-		for i=-0,0 do
-		shots+=1
+	if ship.states.shooting and ship.states.shooting_cd<0 then
+		
+		ship.states.shooting_cd=ship.states.shooting_cd_value
 		add_object(
 									{	group=list_projectiles,
 										x=ship.nosex,
 										y=ship.nosey,
-										damage=10,
-										speed=2,
-										t=20,
-										c1=12,
-										c2=background,
-										angle=ship.angle+0.05*i,
+										angle=ship.angle,
 										dx=ship.dx,
-										dy=ship.dy,
-										friendly=true},
-										template_basic_bullet)
-																	end
+										dy=ship.dy},
+										template_bullet_ship)
+		add_object({
+			group=list_particles,
+			hp=3,
+			draw=function ()
+				rspr(9,								//draw flash
+					ship.nosex,
+					ship.nosey,
+					ship.angle,
+					0,
+					1.5)
+			end
+		},template_basic_particle)
 	end
+
+		
 	
-	ship.angle+=ship.turningd*ship.states.turning
+	ship.angle+=ship.turning_d*ship.states.turning
 	local ac=cos(ship.angle)
 	local as=sin(ship.angle)
 	
@@ -419,8 +409,8 @@ function upd_ship()
 		ship.dy=ship.maxspeed*cas*0.99
 		end
 
-	ship.nosex=ship.x+10*ac
-	ship.nosey=ship.y+10*as
+	ship.nosex=ship.x+7*ac
+	ship.nosey=ship.y+7*as
 	ship.assx=ship.x-4*ac
 	ship.assy=ship.y-4*as
 	ship.ass1x=ship.x-4*cos(ship.angle+0.01)
@@ -450,12 +440,11 @@ function draw_ship()
 													ship.angle,
 													laser.length,
 													false)
-		spr(2,ship.x,ship.y)
-		--[[rspr(2,ship.x,
+		rspr(2,ship.x,
 									ship.y,
 									ship.angle,
 									1,
-									ship.scale)]]
+									ship.scale)
 	else
 		//spr(2,ship.x,ship.y)
 		rspr(1,ship.x,
@@ -467,14 +456,6 @@ function draw_ship()
 	
 	
 				
-	if ship.states.shooting then
-		rspr(9,								//draw flash
-						ship.nosex,
-						ship.nosey,
-						ship.angle,
-						0,
-						1.5)
-	end
 
 	print(#list_particles,ship.x,ship.y+15)
 end
@@ -496,14 +477,14 @@ function handle_input()
 	if btn(⬇️) then
 		ship.states.laser=true
 	end
-	ship.states.parry_cd-=1
+	
 	if btn(🅾️) then
 		if ship.states.parry_cd <0 then
-		ship.states.parry=2
-		ship.states.parry_cd=60
+		ship.states.parry=10
+		ship.states.parry_cd=ship.states.parry_cd_value
 		end
 	end
-	if btn(❎) and tt%10==0 then
+	if btn(❎) then
 		ship.states.shooting=true
 	end
 end
@@ -745,7 +726,8 @@ function draw_collisions()
 	local h=(cr_border*2*cr_cell+128)/(cr_dimensions)
 	
 	for p in all(player_collisions) do
-		circ(p.x,p.y,p.collider_r+1,0)			
+		circ(p.x,p.y,p.collider_r+1,0)	
+		print(p.damage,p.x,p.y+5,0)		
 		
 	end
 		circ(ship.x,ship.y,ship.collider_r,0)			
@@ -796,34 +778,42 @@ end
 function manage_enemy_spawning()
 	if(tt%100==0) then
 	cram_enemy({group=list_enemies,
-		volume=4,
-		c1=10,
+		volume=15,
+		c1=0,
 		c2=12,
-		c3=10,
+		c3=0,
+		speed=1.3,
 		volume_added=0.5,
 		l=7,
 		snake_width=4},
 		template_snake)
 	cram_enemy({group=list_enemies,
-			volume=2,
-			c1=5,
+			volume=4,
+			c1=7,
+			spr=4,
+			c2=1,
+			speed=1.3,
 			volume_added=0.5,
-			collider_r=8},
+			collider_r=8,
+			draw=drw_rsprite,
+			on_hit={fx_dissolve,oh_take_damage},
+			update={bh_face_towards_ship,bh_shoot_at_player, bh_hitbox}},
 		template_enemy)
 	cram_enemy({group=list_enemies,
 			volume=0.5,
-			c1=5,
-			damage=2,
 			scale=0.7,
+			speed=1.3,
 			collider_r=2},
 		template_enemy_fish)
 	end
 end
 
 function get_enemy_spawn_location()
-	local a={}
-	a.x=randb(-50,50)
-	a.y=randb(-50,50)
+	local a={x=randb(-30,30),y=randb(-30,30)}
+	if a.x>0 then a.x+=75 else a.x-=75 end
+	if a.y>0 then a.y+=75 else a.y-=75 end
+	a.x+=ship.x
+	a.y+=ship.y
 	a.angle=randb(-10,10)
 	return a
 end
@@ -930,17 +920,19 @@ function update_all_entities()
 end
 
 function update_entity(self)
-	for u in all(self.update) do
-		u(self)
-	end
-	if self.invincible>0 then
-		self.invincible-=1
-	end
-	if self.hp<=0 then
-		for f in all(self.on_death) do
-			f(self)
+	if bh_remove_if_far_away(self,despawn_distance) then
+		for u in all(self.update) do
+			u(self)
 		end
-	end
+		if self.invincible>0 then
+			self.invincible-=1
+		end
+		if self.hp<=0 then
+			for f in all(self.on_death) do
+				f(self)
+			end
+		end
+	end	
 end
 
 -->8
@@ -1011,6 +1003,21 @@ end
 //have a hitbox
 //can be invincible
 //can die
+function bh_remove_if_far_away(self,distance)
+	local d=300
+	if distance then
+		d=distance
+	end
+	if(self.remove_if_far) then
+		if abs(pifagor(self.x-ship.x,self.y-ship.y))>d
+		then
+			remove_object(self)
+			return false
+		end
+	end
+	return true
+end
+
 
 function bh_update_dead_snake(self)
 	local death_period=3
@@ -1183,20 +1190,21 @@ function bh_shoot_at_player(a)
 		seed=i/3,
 		speed=1+randb(-2,2)/20,
 		c1=7,
-		c2=background,
+		c2=0,
 		angle=ang+randb(-2,2)/50,
 		dx=0,
 		dy=0,
-		on_death={remove_object}},
-		template_basic_bullet)
+		damage=2,
+		on_death={fx_dissolve,remove_object}},
+		template_bullet)
 		end
 	end	
 end
 
-function oh_take_damage(e,p)
-	if e.invincible==0 then
-	e.hp-=p.damage
-	e.invincible=10
+function oh_take_damage(self,other)
+	if self.invincible==0 then
+		self.hp-=other.damage
+		self.invincible=10
 	end
 end
 
@@ -1300,53 +1308,55 @@ function drw_square(self)
 	end
 
 function fx_explode_snake(a,c)
-	shake_explode(0.1)
-	for i=0,4 do
-	add_object(
-		{group=list_particles,
-		x=a.x,
-		y=a.y,
-		dx=randb(-20,21)/10,
-		dy=randb(-20,21)/10,
-		hp=40,
-		draw=drw_circle,
-		c1=c},
-		template_basic_particle)
+	shake_explode(0.07)
+	if(cr_is_on_screen(a))then
+		for i=0,4 do
+		add_object(
+			{group=list_particles,
+			x=a.x,
+			y=a.y,
+			dx=randb(-20,21)/10,
+			dy=randb(-20,21)/10,
+			hp=40,
+			draw=drw_circle,
+			c1=c},
+			template_basic_particle)
+		end
 	end
 end
-	
 
 	
 
 	
 function fx_explode(a)
-	shake_explode(0.2)
-	for i=0,3 do
-		add_object({group=list_particles,
-			x=a.x,
+	shake_explode(0.1)
+	if(cr_is_on_screen(a))then
+		for i=0,3 do
+			add_object({group=list_particles,
+				x=a.x,
 			y=a.y,
 			dx=a.dx+randb(-4,5)/2,
 			dy=a.dy+randb(-4,5)/2,
-			hp=80,
+			hp=60,
 			sd_rate=0.8,
 			collider_r=10,
 			draw=drw_circle,
 			c1=2},
 			template_basic_particle)
-	end
-	for i=0,5 do
-	add_object({group=list_particles,
-		x=a.x,
-		y=a.y,
-		dx=a.dx+randb(-4,5)/5,
-		dy=a.dy+randb(-4,5)/5,
-		hp=50,
-		sd_rate=0.95,
-		draw=drw_circle,
-		c1=randb(8,12)},
-		template_basic_particle)
-	end
-	add_object({group=list_particles,
+		end
+		for i=0,4 do
+			add_object({group=list_particles,
+			x=a.x,
+			y=a.y,
+			dx=a.dx+randb(-4,5)/6,
+			dy=a.dy+randb(-4,5)/6,
+			hp=40,
+			sd_rate=0.95,
+			draw=drw_circle,
+			c1=randb(8,12)},
+			template_basic_particle)
+		end
+		add_object({group=list_particles,
 		x=a.x,
 		y=a.y,
 		dx=a.dx,
@@ -1357,19 +1367,21 @@ function fx_explode(a)
 		c1=7,
 		c2=7},
 		template_basic_particle)
+	end
 end
 
 function fx_dissolve(a)
-	for i=0,5 do
-	add_object({group=list_particles,
-		x=a.x,
-		y=a.y,
-		dx=a.dx+randb(-4,5)/20,
-		dy=a.dy+randb(-4,5)/20,
-		hp=40,
-		c1=a.c1},
-		template_basic_particle)
-
+	if(cr_is_on_screen(a))then
+		for i=0,5 do
+		add_object({group=list_particles,
+			x=a.x,
+			y=a.y,
+			dx=a.dx+randb(-4,5)/20,
+			dy=a.dy+randb(-4,5)/20,
+			hp=40,
+			c1=a.c1},
+			template_basic_particle)
+		end
 	end
 end
 
@@ -1388,6 +1400,10 @@ function op_deflect1(self,other)
 	else 
 		self.c1=14
 	end 
+	self.friendly=true
+	self.hp+=80
+	self.c1=7
+	self.damage+=20
 	add_object({group=list_particles,x=self.x,y=self.y,text=ff},template_text)
 end
 
@@ -1462,6 +1478,7 @@ template_text={
 
 template_enemy={
 	parent=template_empty,
+	remove_if_far=true,
 	speed=0.1,
 	scale=1,
 	volume=2,
@@ -1470,8 +1487,8 @@ template_enemy={
 	sp=2,
 	c1=4,
 	c2=background,
-	hp=20,
-	damage=1,
+	hp=10,
+	damage=2,
 	is_parriable=true,
     draw=drw_debug,
 	update={bh_hitbox},
@@ -1501,20 +1518,21 @@ template_snake={
     draw=drw_snake,
     on_hit={oh_take_damage},
 	on_death={fx_explode,od_die_snake,od_raise_enemy_volume},
-	on_parry={op_deflect1,oh_knockback_self,fx_ff,fx_ff}
+	on_parry={oh_knockback_self,fx_ff,fx_ff}
 	}
 
 
 template_enemy_fish=
 	{
 		parent=template_enemy,
+		hp=10,
 		c1=0,
 		c2=1,
 		spr=3,
 		speed=0.9,
 		turning_d=0.5,
 		scale=0.5,
-		damage=5,
+		damage=4,
 		volume=1,
 		volume_added=0.5,
 		update={bh_fish_towards_ship,bh_hitbox},
@@ -1524,22 +1542,41 @@ template_enemy_fish=
 		on_parry={oh_knockback_self}
 	}
 
-							
-template_basic_bullet={
-	parent=template_empty,
-	group=list_projectiles,
+	template_bullet={
+		parent=template_empty,
+		group=list_projectiles,
+		collider_r=3,
+		damage=2,
+		hp=80,
+		c1=12,
+		speed=4,
+		
+		is_parriable=true,
+		draw=drw_debug,
+		update={bh_fly_straight,bh_hitbox,bh_tick_hp},
+		on_hit={remove_object},
+		on_death={fx_explode,remove_object},
+		on_parry={op_deflect1,function ()sfx(3)end,fx_ff}
+		}		
+
+template_bullet_ship={
+	parent=template_bullet,
 	collider_r=3,
-	damage=1,
+	damage=4,
 	hp=80,
 	c1=12,
-	speed=4,
-	is_parriable=true,
+	c2=background,
+	speed=3,
+	is_parriable=false,
+	friendly=true,
 	draw=drw_debug,
 	update={bh_fly_straight,bh_hitbox,bh_tick_hp},
     on_hit={remove_object},
-	on_death={fx_explode,remove_object},
-	on_parry={op_deflect1,function ()sfx(3)end,fx_ff}
+	on_death={fx_dissolve,remove_object},
+	on_parry={}
 	}
+	
+
 	
 ship_d_o={
 	parent=template_empty,
@@ -1656,14 +1693,14 @@ end
 
 
 __gfx__
-00000000111aa111111771111110011100aaaa00000000000000000000c00c000007700000000000006c000000076c0000000000000000000000000000000000
-00000000111aa111111771111110011100aaaa0000000000000000000011110007777770000000000c000000000000c000a0a000000000000000000000000000
-00700700111aa111111771111100001100adda00000cc000000aa00001c11c100777777000000000c00000000000000c00a0a000000000000000000000000000
-0007700011aaaa11117aa7111100001100dddd00000cc000000aa0001cc11cc17777777700000000600000077000000c00a0a000000000000000000000000000
-0007700011aaaa11117aa71111100111000dd00000cccc0000adda001c1111c17777777700000000700000067000000600000000000000000000000000000000
-0070070011aaaa1111aaaa1111100111000dd0000cccccc00adddda01111111107777770000700000000000cc00000000a000a00000000000000000000000000
-000000001aaaaaa11aaaaaa11100001100adda000000000000000000111111110777777000777000000000c0060000000aaaaa00000000000000000000000000
-000000001aaaaaa11aaaaaa11101101100d00d000000000000000000011111100007700077777770000cc60000cc000000000000000000000000000000000000
+00000000111aa111111771111110011111aaaa11000000000000000000c00c000007700000000000006c000000076c0000000000000000000000000000000000
+00000000111aa111111771111110011111aaaa1100000000000000000011110007777770000000000c000000000000c000a0a000000000000000000000000000
+00700700111aa111111771111100001111a00a11000cc000000aa00001c11c100777777000070000c00000000000000c00a0a000000000000000000000000000
+0007700011aaaa11117aa7111100001111000011000cc000000aa0001cc11cc17777777700777000600000077000000c00a0a000000000000000000000000000
+0007700011aaaa11117aa711111001111110011100cccc0000adda001c1111c17777777777777770700000067000000600000000000000000000000000000000
+0070070011aaaa1111aaaa1111100111111001110cccccc00adddda01111111107777770000000000000000cc00000000a000a00000000000000000000000000
+000000001aaaaaa11aaaaaa11100001111a00a110000000000000000111111110777777000000000000000c0060000000aaaaa00000000000000000000000000
+000000001aaaaaa11aaaaaa111011011110110110000000000000000011111100007700000000000000cc60000cc000000000000000000000000000000000000
 00000000000000a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000aa0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000aaa000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
