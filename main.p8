@@ -53,6 +53,7 @@ freeze_frame=0
 function _init()
 	start_menu()
 	cam={x=0,y=0}
+	cam2={x=0,y=0}
 end
 
 function start_menu()
@@ -192,26 +193,26 @@ function _update60()
 
 function start_game()
 	music(5)
-	enemy_volume_max=7
+	enemy_volume_max=50
 	despawn_distance=150
 	ship={x=64,y=64,dx=0,dy=0,
 						ax=0,ay=0,
 						hp=20,
 						collider_r=10,
-						damage=5,
+						damage=2,
 						angle=0.25,
 						c1=12,
 						invincible=0,
 						speed=0,
 						on_hit={fx_explode,oh_take_damage},
-						
+						laser_charge=2,
 						nosex=0,
 						nosey=0,
-						acc=0.07,
+						acc=0.09,
 						lacc=0.008,
-						dcc=0.005,
+						dcc=0.000,//0.005
 						turning_d=0.1,
-						maxspeed=1.4,
+						maxspeed=2,
 						scale=1,
 						states={}
 						}
@@ -227,7 +228,7 @@ function start_game()
 		parry_cd_value=40,
 	}
 	tt=-1
-	base_turning=0.03
+	base_turning=0.02
 	fly_turning=0.005
 	shoot_turning=0.02
 	laser_turning=0.003
@@ -248,6 +249,9 @@ end
 
 	
 function game_update()
+
+	cam2.x+=(ship.x-cam2.x)/4
+	cam2.y+=(ship.y-cam2.y)/4
 	if freeze_frame >0 then
 		freeze_frame=min(freeze_frame,50)
 		shake_explode(0.01+0.2/freeze_frame)
@@ -289,7 +293,8 @@ function game_draw()
 	draw_all(list_projectiles)
 	draw_all(list_particles)
 	draw_all(list_enemies)
-	
+	draw_ui()
+
 	draw_ship()
 	//draw_collisions()
  	//clear_collisions()
@@ -302,14 +307,23 @@ function game_draw()
 	print(ship.hp,ship.x,ship.y+10,15)
 	print(ship.states.parry,ship.x+32,ship.y+32)
 	]]--
-	//print(enemies[1][1].hp,ship.x,ship.y+20)
-	print(ship.hp,ship.x+10,ship.y)
-	print(get_available_enemy_volume(list_enemies),ship.x+30,ship.y+20,12)
-	print(#list_enemies,ship.x+30,ship.y+40,15)
+
+	
+	
 	end
 -->8
 //ship update and input
 //laser
+
+
+
+function draw_ui()
+	print(ship.hp,ship.x+10,ship.y)
+	rect(cam.x,cam.y+20,cam.x+ship.laser_charge*2,cam.y+25,7)
+	
+end
+
+
 
 function upd_ship()
 	ship.states.parry_cd-=1
@@ -479,7 +493,29 @@ function handle_input()
 	end
 	
 	if btn(🅾️) then
+		local qwerty=ship.angle
+		
+
 		if ship.states.parry_cd <0 then
+			fx_explode(ship)
+			local qq=ship.x
+			local ww=ship.y
+			local ee=ship.dx
+			local rr=ship.dy
+			add_object({group=list_particles,
+			hp=10,
+				draw=function ()
+				line(qq,ww,qq+20*ee,ww+rr*20,12)
+			end},template_basic_particle)
+			add_animation(function ()
+				ship.x+=20*ship.dx
+				ship.y+=20*ship.dy
+				for i=0,8 do
+				//ship.dx+=1*cos(ship.angle)
+				//ship.dy+=1*sin(ship.angle)
+				yield()
+				end
+			end)
 		ship.states.parry=10
 		ship.states.parry_cd=ship.states.parry_cd_value
 		end
@@ -778,17 +814,18 @@ end
 function manage_enemy_spawning()
 	if(tt%100==0) then
 	cram_enemy({group=list_enemies,
-		volume=15,
-		c1=0,
+		volume=30,
+		c1=8,
 		c2=12,
-		c3=0,
-		speed=1.3,
+		c3=8,
+		speed=1.9,
+		hp=80,
 		volume_added=0.5,
-		l=7,
+		l=80,
 		snake_width=4},
 		template_snake)
 	cram_enemy({group=list_enemies,
-			volume=4,
+			volume=5,
 			c1=7,
 			spr=4,
 			c2=1,
@@ -800,9 +837,9 @@ function manage_enemy_spawning()
 			update={bh_face_towards_ship,bh_shoot_at_player, bh_hitbox}},
 		template_enemy)
 	cram_enemy({group=list_enemies,
-			volume=0.5,
+			volume=6,
 			scale=0.7,
-			speed=1.3,
+			speed=1.9,
 			collider_r=2},
 		template_enemy_fish)
 	end
@@ -838,7 +875,7 @@ function add_stars()
 		star.move=randb(1,3)
 		add(list_stars,star)
 		end
-	for i=0,0 do
+	for i=0,100 do
 		local star={}
 		star.x=randb(0,256)
 		star.y=randb(0,256)
@@ -847,6 +884,7 @@ function add_stars()
 		star.move=randb(1,3)
 		add(list_stars,star)
 		end
+	
 end
 
 
@@ -1067,7 +1105,7 @@ function bh_update_snake(self)
 		self.segments[1].on_hit={}
 		//self.segments[2].collider_r=self.snake_width*0.8
 	end
-	local period=6
+	local period=4
 	for i=2,#self.segments do 
 		add_enemy_collider(self.segments[i])
 		add_enemy_projectile_collider(self.segments[i])
@@ -1246,7 +1284,7 @@ end
 function drw_snake(self)
 	if self.segments then
 		if self.invincible>0 then
-			circfill(self.segments[1].x,self.segments[1].y,self.segments[1].collider_r+1,self.c2)
+			circfill(self.x,self.y,self.segments[1].collider_r+1,self.c2)
 			for i=2,#self.segments do
 				circfill(self.segments[i].x,self.segments[i].y,self.segments[i].collider_r+2,self.c2)
 			end
@@ -1410,7 +1448,8 @@ end
 function op_deflect_bullet(self,other)
 	self.angle=0.5+self.angle
 	self.friendly=true
-	self.hp+=20
+	self.hp+=80
+	self.damage+=10
 	self.c1=7
 	self.invincible=10
 end
@@ -1423,6 +1462,10 @@ end
 
 function od_raise_enemy_volume(self)
 	enemy_volume_max+=self.volume_added
+end
+
+function od_raise_laser_charge(self)
+	ship.laser_charge+=self.laser_charge
 end
 
 template_empty={
@@ -1445,6 +1488,7 @@ template_empty={
 	c3=0,
 	hp=20,
 	volume_added=0,
+	laser_charge=2,
 	damage=0,
 	is_parriable=false,
 	friendly=false,
@@ -1493,7 +1537,7 @@ template_enemy={
     draw=drw_debug,
 	update={bh_hitbox},
 	on_hit={oh_take_damage},
-	on_death={remove_object,od_raise_enemy_volume},
+	on_death={remove_object,od_raise_enemy_volume,od_raise_laser_charge},
 	on_parry={}
 	}
 
@@ -1517,8 +1561,8 @@ template_snake={
 	update={bh_snake_towards_ship,bh_slow_down,bh_hitbox,bh_update_snake},
     draw=drw_snake,
     on_hit={oh_take_damage},
-	on_death={fx_explode,od_die_snake,od_raise_enemy_volume},
-	on_parry={oh_knockback_self,fx_ff,fx_ff}
+	on_death={fx_explode,od_die_snake,od_raise_enemy_volume,od_raise_laser_charge},
+	on_parry={function(self) self.invincible=20 end,oh_knockback_self,fx_ff,fx_ff}
 	}
 
 
@@ -1529,7 +1573,7 @@ template_enemy_fish=
 		c1=0,
 		c2=1,
 		spr=3,
-		speed=0.9,
+		speed=1.8,
 		turning_d=0.5,
 		scale=0.5,
 		damage=4,
@@ -1537,7 +1581,7 @@ template_enemy_fish=
 		volume_added=0.5,
 		update={bh_fish_towards_ship,bh_hitbox},
 		on_hit={oh_take_damage,fx_dissolve,oh_if_ship_then_die},
-		on_death={fx_explode,remove_object,od_raise_enemy_volume},
+		on_death={fx_explode,remove_object,od_raise_enemy_volume,od_raise_laser_charge},
 		draw=drw_rsprite,
 		on_parry={oh_knockback_self}
 	}
@@ -1556,7 +1600,7 @@ template_enemy_fish=
 		update={bh_fly_straight,bh_hitbox,bh_tick_hp},
 		on_hit={remove_object},
 		on_death={fx_explode,remove_object},
-		on_parry={op_deflect1,function ()sfx(3)end,fx_ff}
+		on_parry={op_deflect_bullet,function ()sfx(3)end,fx_ff}
 		}		
 
 template_bullet_ship={
@@ -1642,8 +1686,8 @@ function screen_shake()
 	offset_x*=offset
 	offset_y*=offset
 
-	cam.x=flr(ship.x+offset_x)
-	cam.y=flr(ship.y+offset_y)
+	cam.x=flr(cam2.x+offset_x)
+	cam.y=flr(cam2.y+offset_y)
 	
 	offset_e*=fade
 	offset_g*=fade
@@ -1693,11 +1737,11 @@ end
 
 
 __gfx__
-00000000111aa111111771111110011111aaaa11000000000000000000c00c000007700000000000006c000000076c0000000000000000000000000000000000
-00000000111aa111111771111110011111aaaa1100000000000000000011110007777770000000000c000000000000c000a0a000000000000000000000000000
-00700700111aa111111771111100001111a00a11000cc000000aa00001c11c100777777000070000c00000000000000c00a0a000000000000000000000000000
-0007700011aaaa11117aa7111100001111000011000cc000000aa0001cc11cc17777777700777000600000077000000c00a0a000000000000000000000000000
-0007700011aaaa11117aa711111001111110011100cccc0000adda001c1111c17777777777777770700000067000000600000000000000000000000000000000
+0000000011199111111771111110011111aaaa11000000000000000000c00c000007700000000000006c000000076c0000000000000000000000000000000000
+0000000011199111111771111110011111aaaa1100000000000000000011110007777770000000000c000000000000c000a0a000000000000000000000000000
+0070070011199111111771111100001111a00a11000cc000000aa00001c11c100777777000070000c00000000000000c00a0a000000000000000000000000000
+00077000119aa911117aa7111100001111000011000cc000000aa0001cc11cc17777777700777000600000077000000c00a0a000000000000000000000000000
+00077000119aa911117aa711111001111110011100cccc0000adda001c1111c17777777777777770700000067000000600000000000000000000000000000000
 0070070011aaaa1111aaaa1111100111111001110cccccc00adddda01111111107777770000000000000000cc00000000a000a00000000000000000000000000
 000000001aaaaaa11aaaaaa11100001111a00a110000000000000000111111110777777000000000000000c0060000000aaaaa00000000000000000000000000
 000000001aaaaaa11aaaaaa111011011110110110000000000000000011111100007700000000000000cc60000cc000000000000000000000000000000000000
