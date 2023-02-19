@@ -6,9 +6,13 @@ todo
 
 laser charging 
 
-fix phasing through snake using another enemy
+laser disables shooting
 
 parry charge
+
+fix phasing through snake using another enemy
+
+
 
 on_parry
 ship on_hit's --done
@@ -27,9 +31,6 @@ fix snakes, segments
 
 new parry
 
-
-smoke and explosions
-
 highscore 
 
 dx dy/speed angle on dissolve
@@ -37,7 +38,6 @@ dx dy/speed angle on dissolve
 particle templates
 render particles only on screen
 
-enemy manager
 animations handler: 
 		parry wave
 		parry speed boost
@@ -48,6 +48,7 @@ animations handler:
 ship={}
 null=function() end
 background=13
+outline=background
 freeze_frame=0
 
 function _init()
@@ -88,7 +89,9 @@ function menu_draw()
 	print("press ❎ to play",30,90,play_btn_color)
 	line(-6+8*tt/2,55,-6+8*tt/2,70,play_btn_color)
 	draw_all(list_draw_objects)
-	
+	print(stat(0),0,0)
+	print(stat(1),0,20)
+	print(stat(2),0,40)
 end
 
 function menu_update()
@@ -198,19 +201,25 @@ function start_game()
 	ship={x=64,y=64,dx=0,dy=0,
 						ax=0,ay=0,
 						hp=20,
+						maxhp=20,
+						regen=0,//0.02,
 						collider_r=10,
 						damage=2,
+						inv_damage=5,
 						angle=0.25,
 						c1=12,
 						invincible=0,
 						speed=0,
 						on_hit={fx_explode,oh_take_damage},
-						laser_charge=2,
+						on_pickup={oh_take_damage},
+						laser_charge=0,
+						laser_charge_max=20,
+						laser_charge_threshold=15,
 						nosex=0,
 						nosey=0,
 						acc=0.09,
 						lacc=0.008,
-						dcc=0.000,//0.005
+						dcc=0.007,//0.005
 						turning_d=0.1,
 						maxspeed=2,
 						scale=1,
@@ -257,8 +266,9 @@ function game_update()
 		shake_explode(0.01+0.2/freeze_frame)
 		freeze_frame-=1
 	else
-		ship.hp+=0.02
-		ship.hp=min(20,ship.hp)
+		ship.laser_charge=min(ship.laser_charge,ship.laser_charge_max)
+		ship.hp+=ship.regen
+		ship.hp=min(ship.maxhp,ship.hp)
 		if ship.invincible>0 then
 			ship.invincible-=1
 		end	
@@ -277,10 +287,35 @@ function game_update()
 	start_menu()
 	end
 end
+health_circle_r=100
+function draw_health_circle()
+	cls(14)
 
+	--[[local x=tt%50/50
+	//local current_r=100*(1-x)
+	//circ(ship.x,ship.y,current_r,0)
+	//local current_r=100*(1-x^3)
+	//circ(ship.x,ship.y,current_r,7)]]
+	
+	local x=1-ship.hp/ship.maxhp
+	local current_r=92*(1-x^1.25)
+	if x==0 then
+		current_r=120
+	end
+	
+
+	if current_r!=health_circle_r then
+	health_circle_r+=flr((current_r-health_circle_r)/2)
+	end
+	
+	circfill(ship.x,ship.y,health_circle_r,background)
+	//print(ceil((1-x)*100),ship.x+20,ship.y,7)
+	//print("%",ship.x+40,ship.y,7)
+end
 
 function game_draw()
 	cls(background)
+	draw_health_circle()
 	screen_shake()
 	camera(cam.x-64,cam.y-64)
 	draw_stars()
@@ -293,9 +328,11 @@ function game_draw()
 	draw_all(list_projectiles)
 	draw_all(list_particles)
 	draw_all(list_enemies)
-	draw_ui()
+	
 
 	draw_ship()
+
+	//draw_ui()
 	//draw_collisions()
  	//clear_collisions()
 	
@@ -318,8 +355,63 @@ function game_draw()
 
 
 function draw_ui()
-	print(ship.hp,ship.x+10,ship.y)
-	rect(cam.x,cam.y+20,cam.x+ship.laser_charge*2,cam.y+25,7)
+	local ri_y=34
+	local l=30
+	local laser_bar_color=12
+	local hp_bar_color=8
+	
+	if ship.laser_charge>=ship.laser_charge_max then 
+		if tt%16>8 then	
+			laser_bar_color=7
+		end
+	else
+	if ship.laser_charge>ship.laser_charge_threshold then 
+		if tt%32>16 then	
+			laser_bar_color=7
+		end
+	end
+	end	
+
+	
+	if ship.hp<=0.45*ship.maxhp then 
+		if tt%15>8 then	
+		hp_bar_color=9
+		end
+	end
+	//print(ship.hp,ship.x+10,ship.y)
+	//print(ship.laser_charge,ship.x+10,ship.y+10)
+	
+
+
+	//rectfill(cam.x-64,cam.y-3+ri_y,cam.x-58,cam.y+24+ri_y,9)
+	
+	
+	if ship.laser_charge>0 then
+	//rectfill(cam.x-64,ri_y+cam.y+24-(ship.laser_charge/ship.laser_charge_max)*l,cam.x-58,ri_y+cam.y+24,laser_bar_color)
+	end
+	fillp()
+
+	clip(0,128-4-(ship.laser_charge/ship.laser_charge_max)*l,128,128)
+	pal(12,laser_bar_color)
+	spr(162,cam.x-64+2,ri_y+cam.y-4,1,5)
+	pal()
+	clip()
+
+	clip(4,0,(ship.hp/ship.maxhp)*l,128)
+	pal(8,hp_bar_color)
+	spr(212,cam.x-64+4,cam.y+54,4,1)
+	pal()
+	clip()
+
+
+
+	
+
+	spr(176,cam.x-64,ri_y+cam.y-10,2,5)
+	spr(226,cam.x-48,ri_y+cam.y-10+24,3,2)
+
+	
+	
 	
 end
 
@@ -419,8 +511,8 @@ function upd_ship()
 
 	if pifagor(ship.dx,ship.dy)>ship.maxspeed 
 		then
-		ship.dx=ship.maxspeed*cac*0.99
-		ship.dy=ship.maxspeed*cas*0.99
+		ship.dx=ship.maxspeed*cac*0.97
+		ship.dy=ship.maxspeed*cas*0.97
 		end
 
 	ship.nosex=ship.x+7*ac
@@ -461,6 +553,7 @@ function draw_ship()
 									ship.scale)
 	else
 		//spr(2,ship.x,ship.y)
+		
 		rspr(1,ship.x,
 									ship.y,
 									ship.angle,
@@ -471,7 +564,7 @@ function draw_ship()
 	
 				
 
-	print(#list_particles,ship.x,ship.y+15)
+	//print(#list_particles,ship.x,ship.y+15)
 end
 
 function handle_input()
@@ -547,6 +640,7 @@ function fire_laser(x1,y1,a,l,l1)
 		a.y=y1+hy*i
 		a.collider_r=5
 		a.damage=3
+		a.inv_damage=5
 		a.c=7
 		a.on_hit={}
 		a.on_death={}
@@ -693,11 +787,18 @@ function manage_player_collisions()
 				for oh in all(p.on_hit) do
 					oh(p,ship)
 				end
-				for oh in all(ship.on_hit) do
-					oh(ship,p)
+
+				if p.is_pickup==true then
+					for op in all(ship.on_pickup) do
+							op(ship,p)
+					end
+				else
+					for oh in all(ship.on_hit) do
+						oh(ship,p)
+					end
 				end
 			end
-	
+
 	end
 end
 		
@@ -813,7 +914,8 @@ end
 
 function manage_enemy_spawning()
 	if(tt%100==0) then
-	cram_enemy({group=list_enemies,
+	
+	--[[cram_enemy({group=list_enemies,
 		volume=30,
 		c1=8,
 		c2=12,
@@ -822,8 +924,8 @@ function manage_enemy_spawning()
 		hp=80,
 		volume_added=0.5,
 		l=80,
-		snake_width=4},
-		template_snake)
+		snake_width=5},
+		template_snake)]]
 	cram_enemy({group=list_enemies,
 			volume=5,
 			c1=7,
@@ -836,11 +938,11 @@ function manage_enemy_spawning()
 			on_hit={fx_dissolve,oh_take_damage},
 			update={bh_face_towards_ship,bh_shoot_at_player, bh_hitbox}},
 		template_enemy)
+	
 	cram_enemy({group=list_enemies,
 			volume=6,
 			scale=0.7,
-			speed=1.9,
-			collider_r=2},
+			speed=1.9},
 		template_enemy_fish)
 	end
 end
@@ -866,20 +968,20 @@ end
 //enemies and snakes
 //stars, particles and projectiles
 function add_stars()
-	for i=0,100 do
+	for i=0,0 do
 		local star={}
 		star.x=randb(0,256)
 		star.y=randb(0,256)
-		star.d=randb(50,99)/100
-		star.c=7
+		star.d=randb(50,70)/100
+		star.c=14
 		star.move=randb(1,3)
 		add(list_stars,star)
 		end
-	for i=0,100 do
+	for i=0,60 do
 		local star={}
 		star.x=randb(0,256)
 		star.y=randb(0,256)
-		star.d=randb(3,20)/100
+		star.d=randb(5,20)/100
 		star.c=2
 		star.move=randb(1,3)
 		add(list_stars,star)
@@ -1083,6 +1185,7 @@ function bh_update_snake(self)
 			segment.angle=0
 			segment.speed=1
 			segment.damage=4
+			segment.inv_damage=10
 			segment.is_parriable=false
 			segment.y=self.y+10+i*10
 			segment.dx=0
@@ -1171,6 +1274,15 @@ function bh_fish_towards_ship(a)
 	a.y+=as*a.speed
 end
 
+function bh_fly_towards_ship(a)
+	a.a=atan2(-a.x+ship.x,-a.y+ship.y)
+	local as=sin(a.a)
+	local ac=cos(a.a)
+	a.angle=atan2(ac,as)
+	a.x+=ac*a.speed
+	a.y+=as*a.speed
+end
+
 function bh_snake_towards_ship(self)
 	local td=0.003
 	if self.turning_d then
@@ -1210,6 +1322,21 @@ function bh_fly_straight(a)
 	a.y+=a.dy+sin(a.angle)*a.speed
 end
 
+function bh_update_pellet(self)
+	add_enemy_projectile_collider(self)
+	
+	if not btn(❎) then
+		local a=atan2(-self.x+ship.x,-self.y+ship.y)
+		local dist=pifagor(-self.x+ship.x,-self.y+ship.y)
+		local as=sin(a)
+		local ac=cos(a)
+		self.dx=ac*self.speed*30*3^(-dist/100)
+		self.dy=as*self.speed*30*3^(-dist/100)
+	end
+
+	
+end
+
 function bh_shoot_at_player(a)
 	offset=randb(0,100)/100
 	ang=atan2(-a.x+ship.x,
@@ -1228,8 +1355,8 @@ function bh_shoot_at_player(a)
 		seed=i/3,
 		speed=1+randb(-2,2)/20,
 		c1=7,
-		c2=0,
-		angle=ang+randb(-2,2)/50,
+		c2=outline,
+		angle=ang,
 		dx=0,
 		dy=0,
 		damage=2,
@@ -1242,13 +1369,14 @@ end
 function oh_take_damage(self,other)
 	if self.invincible==0 then
 		self.hp-=other.damage
-		self.invincible=10
+		self.invincible+=other.inv_damage
 	end
 end
 
 function oh_if_ship_then_die(self,other)
 	if other==ship then
-		self.hp=0
+		del(self.group,self)
+		fx_explode(self)
 	end
 
 end
@@ -1283,12 +1411,15 @@ end
 
 function drw_snake(self)
 	if self.segments then
+		local border_color=outline
 		if self.invincible>0 then
-			circfill(self.x,self.y,self.segments[1].collider_r+1,self.c2)
-			for i=2,#self.segments do
-				circfill(self.segments[i].x,self.segments[i].y,self.segments[i].collider_r+2,self.c2)
-			end
+			border_color=self.c2
 		end
+		circfill(self.x,self.y,self.segments[1].collider_r+2,border_color)
+		for i=2,#self.segments do
+			circfill(self.segments[i].x,self.segments[i].y,self.segments[i].collider_r+2,border_color)
+		end
+		
 		for i=2,#self.segments do
 			circfill(self.segments[i].x,self.segments[i].y,self.segments[i].collider_r,self.segments[i].c1)
 		end
@@ -1306,7 +1437,7 @@ end
 function drw_debug(self)
 	//print(self.damage,self.x,self.y+10)
 	circfill(self.x,self.y,
-						self.collider_r,
+						self.collider_r+1,
 						self.c2)
 	circfill(self.x,self.y,
 						self.collider_r-1,
@@ -1330,6 +1461,18 @@ function drw_circle(self)
 
 function drw_rsprite(self)
 	rspr(self.spr,self.x,self.y,self.angle,self.c2,self.scale)
+	//print(self.hp,self.x,self.y+20)
+	end
+
+function drw_spr(self)
+	
+	for pp in all(self.pals) do 
+		pal(pp[1],pp[2])
+	end
+	spr(self.spr,self.x-3,self.y-3)
+	pal()
+	//circ(self.x,self.y,self.collider_r,7)
+	//pset(self.x,self.y,0)
 	end
 
 function drw_text(self)
@@ -1464,6 +1607,26 @@ function od_raise_enemy_volume(self)
 	enemy_volume_max+=self.volume_added
 end
 
+function od_drop_pellets(self)
+	for i=1,self.hp_pellets do
+		add_object({group=list_particles,
+			x=self.x,
+			y=self.y,
+			dx=self.dx+randb(-4,5)/5,
+			dy=self.dy+randb(-4,5)/5},
+			template_pellet_hp)
+		end
+
+		for i=1,self.laser_pellets do
+			add_object({group=list_particles,
+				x=self.x,
+				y=self.y,
+				dx=self.dx+randb(-4,5)/5,
+				dy=self.dy+randb(-4,5)/5},
+				template_pellet_laser)
+			end
+end
+
 function od_raise_laser_charge(self)
 	ship.laser_charge+=self.laser_charge
 end
@@ -1481,6 +1644,7 @@ template_empty={
 	invincible=0,
 	turning_d=0,
 	sd_rate=0.95,
+	spr=0,
 	group={},
 	sp=0,
 	c1=0,
@@ -1488,12 +1652,16 @@ template_empty={
 	c3=0,
 	hp=20,
 	volume_added=0,
-	laser_charge=2,
+	laser_pellets=0,
+	hp_pellets=0,
 	damage=0,
+	inv_damage=10,
 	is_parriable=false,
 	friendly=false,
+	
     draw=drw_debug,
     on_hit={},
+	on_pickup={},
 	on_death={},
 	on_parry={}
 }
@@ -1504,12 +1672,51 @@ template_empty={
 template_basic_particle={
 	parent=template_empty,
 	c1=7,
-	volume=2,
 	sd_rate=0.95,
 	update={bh_fly_straight,bh_tick_hp,bh_slow_down},
     draw=drw_circle,
 	on_death={remove_object}
 }
+
+template_pellet={
+	parent=template_basic_particle,
+	damage=0,
+	inv_damage=0,
+	sd_rate=0.98,
+	hp=500,
+	speed=0.1,
+	collider_r=10,
+	spr=12,
+	draw=drw_spr,
+	on_hit={remove_object},
+	is_pickup=true,
+	friendly=false,
+	update={bh_fly_straight,bh_tick_hp,bh_slow_down,bh_update_pellet},
+}
+
+template_pellet_hp={
+	parent=template_pellet,
+	pals={{2,outline}},
+	spr=13,
+	damage=-3,
+	c1=9,
+	c2=7,
+	on_hit={remove_object}
+}
+
+template_pellet_laser={
+	parent=template_pellet,
+	pals={{9,12},{2,outline}},
+	spr=13,
+	c1=12,
+	c2=7,
+	damage=0,
+	on_hit={remove_object,function(self)  ship.laser_charge+=3 end}
+}
+
+
+
+
 template_text={
 	parent=template_empty,
 	c1=7,
@@ -1522,6 +1729,8 @@ template_text={
 
 template_enemy={
 	parent=template_empty,
+	hp_pellets=1,
+	laser_pellets=1,
 	remove_if_far=true,
 	speed=0.1,
 	scale=1,
@@ -1537,7 +1746,7 @@ template_enemy={
     draw=drw_debug,
 	update={bh_hitbox},
 	on_hit={oh_take_damage},
-	on_death={remove_object,od_raise_enemy_volume,od_raise_laser_charge},
+	on_death={remove_object,od_raise_enemy_volume,od_drop_pellets},
 	on_parry={}
 	}
 
@@ -1556,12 +1765,13 @@ template_snake={
 	sd_rate=0.95,
 	hp=80,
 	l=3,
-	damage=1,
+	damage=8,
+	inv_damage=20,
 	is_parriable=true,
 	update={bh_snake_towards_ship,bh_slow_down,bh_hitbox,bh_update_snake},
     draw=drw_snake,
     on_hit={oh_take_damage},
-	on_death={fx_explode,od_die_snake,od_raise_enemy_volume,od_raise_laser_charge},
+	on_death={fx_explode,od_die_snake,od_raise_enemy_volume,od_drop_pellets},
 	on_parry={function(self) self.invincible=20 end,oh_knockback_self,fx_ff,fx_ff}
 	}
 
@@ -1569,19 +1779,22 @@ template_snake={
 template_enemy_fish=
 	{
 		parent=template_enemy,
-		hp=10,
+		hp_pellets=2,
+		laser_pellets=0,
+		hp=1,
 		c1=0,
 		c2=1,
 		spr=3,
 		speed=1.8,
+		collider_r=3,
 		turning_d=0.5,
 		scale=0.5,
-		damage=4,
+		damage=1,
 		volume=1,
 		volume_added=0.5,
 		update={bh_fish_towards_ship,bh_hitbox},
 		on_hit={oh_take_damage,fx_dissolve,oh_if_ship_then_die},
-		on_death={fx_explode,remove_object,od_raise_enemy_volume,od_raise_laser_charge},
+		on_death={fx_explode,remove_object,od_raise_enemy_volume,od_drop_pellets},
 		draw=drw_rsprite,
 		on_parry={oh_knockback_self}
 	}
@@ -1593,6 +1806,7 @@ template_enemy_fish=
 		damage=2,
 		hp=80,
 		c1=12,
+		c2=background,
 		speed=4,
 		
 		is_parriable=true,
@@ -1609,7 +1823,7 @@ template_bullet_ship={
 	damage=4,
 	hp=80,
 	c1=12,
-	c2=background,
+	c2=outline,
 	speed=3,
 	is_parriable=false,
 	friendly=true,
@@ -1632,8 +1846,6 @@ ship_d_o={
 
 
 
-
-ship.on_hit={fx_explode,oh_take_damage}
 
 -->8
 //rspr, screenshake
@@ -1737,14 +1949,14 @@ end
 
 
 __gfx__
-0000000011199111111771111110011111aaaa11000000000000000000c00c000007700000000000006c000000076c0000000000000000000000000000000000
-0000000011199111111771111110011111aaaa1100000000000000000011110007777770000000000c000000000000c000a0a000000000000000000000000000
-0070070011199111111771111100001111a00a11000cc000000aa00001c11c100777777000070000c00000000000000c00a0a000000000000000000000000000
-00077000119aa911117aa7111100001111000011000cc000000aa0001cc11cc17777777700777000600000077000000c00a0a000000000000000000000000000
-00077000119aa911117aa711111001111110011100cccc0000adda001c1111c17777777777777770700000067000000600000000000000000000000000000000
-0070070011aaaa1111aaaa1111100111111001110cccccc00adddda01111111107777770000000000000000cc00000000a000a00000000000000000000000000
-000000001aaaaaa11aaaaaa11100001111a00a110000000000000000111111110777777000000000000000c0060000000aaaaa00000000000000000000000000
-000000001aaaaaa11aaaaaa111011011110110110000000000000000011111100007700000000000000cc60000cc000000000000000000000000000000000000
+00000000111aa111111771111118811111aaaa11000000000000000000c00c000007700000000000006c000000076c0000000000002220000000000000000000
+00000000111aa111111771111118811111aaaa1100000000000000000111111007777770000000000c000000000000c000a0a000022222000000000000000000
+00700700111aa111111771111180081111a00a11000cc000000aa00011c11c110777777000070000c00000000000000c00a0a000222722200000000000000000
+0007700011aaaa11117aa7111100001111000011000cc000000aa0001cc11cc17777777700777000600000077000000c00a0a000227992200000000000000000
+0007700011aaaa11117aa711111001111110011100cccc0000adda001c1111c17777777777777770700000067000000600000000222922200000000000000000
+0070070011aaaa1111aaaa1111100111111001110cccccc00adddda01111111107777770000000000000000cc00000000a000a00022222000000000000000000
+000000001aaaaaa11aaaaaa11100001111a00a110000000000000000111111110777777000000000000000c0060000000aaaaa00002220000000000000000000
+000000001aaaaaa11aaaaaa111a11a11110110110000000000000000011111100007700000000000000cc60000cc000000000000000000000000000000000000
 00000000000000a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000aa0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000aaa000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -1811,6 +2023,58 @@ __gfx__
 00000000000000000000000000000000000000000000000000777000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000007777700000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000007777770000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000cc00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000ccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000cccc000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000ccccc00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000cccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000cccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000cccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000cccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000cccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000cccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000cccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00c0000000000000cccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00cc000000000000cccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000cc00000000000cccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000cc0000000000cccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000cc000000000cccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000cc00000000cccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000c00000000cccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000cccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000cccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0006660000000000cccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0006060000000000cccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0006600000000000cccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0006060000000000cccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000ccccc00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0006660000000000cccc000000000000000008888888888888888888800000000000000000000000000000000000000000000000000000000000000000000000
+0006060000000000ccc0000000000000000088888888888888888888880000000000000000000000000000000000000000000000000000000000000000000000
+0006660000000000cc00000000000000000888888888888888888888888000000000000000000000000000000000000000000000000000000000000000000000
+0006060000000000c000000000000000008888888888888888888888888800000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000088888888888888888888888888880000000000000000000000000000000000000000000000000000000000000000000
+00060600000000000000000000000000888888888888888888888888888888000000000000000000000000000000000000000000000000000000000000000000
+00066600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00066600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000cc800000000000000000000880000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000cc8006060666000000000000088000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000cc80006060606000000000000008800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000cc800006660666000000000000000880000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00cc8000006060600000000000000000088000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00c80000000000000000000000000000008800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __label__
 77722222222222222222222222222222222222222222222222222222222222222222277777227222222227722777222222222222222222222222222222222222
 72722222222222222222222222222222222222222222222222222222222222222222722222727222222222722777222222222222222222222222222222222222
