@@ -915,17 +915,17 @@ end
 function manage_enemy_spawning()
 	if(tt%100==0) then
 	
-	--[[cram_enemy({group=list_enemies,
-		volume=30,
+	cram_enemy({group=list_enemies,
+		volume=40,
 		c1=8,
 		c2=12,
 		c3=8,
 		speed=1.9,
 		hp=80,
-		volume_added=0.5,
+		volume_added=3,
 		l=80,
 		snake_width=5},
-		template_snake)]]
+		template_snake)
 	cram_enemy({group=list_enemies,
 			volume=5,
 			c1=7,
@@ -940,14 +940,18 @@ function manage_enemy_spawning()
 		template_enemy)
 	
 	cram_enemy({group=list_enemies,
-			volume=6,
+			volume_added=4,
+			volume=3,
 			scale=0.7,
 			speed=1.9},
 		template_enemy_fish)
+		
 	end
 end
 
 function get_enemy_spawn_location()
+
+
 	local a={x=randb(-30,30),y=randb(-30,30)}
 	if a.x>0 then a.x+=75 else a.x-=75 end
 	if a.y>0 then a.y+=75 else a.y-=75 end
@@ -1163,6 +1167,7 @@ function bh_update_dead_snake(self)
 	local death_period=3
 	if(tt%death_period==0)then
 		fx_explode_snake(self.segments[1],8)//red explosion
+		od_drop_pellets(self.segments[1])
 		del(self.segments,self.segments[1])
 	end
 	if #self.segments==0 then
@@ -1183,9 +1188,11 @@ function bh_update_snake(self)
 			segment.on_hit={ff,oh_knockback_other}
 			segment.x=self.x
 			segment.angle=0
+			segment.hp_pellets=1
+			segment.laser_pellets=0
 			segment.speed=1
 			segment.damage=4
-			segment.inv_damage=10
+			segment.inv_damage=20
 			segment.is_parriable=false
 			segment.y=self.y+10+i*10
 			segment.dx=0
@@ -1208,6 +1215,18 @@ function bh_update_snake(self)
 		self.segments[1].on_hit={}
 		//self.segments[2].collider_r=self.snake_width*0.8
 	end
+
+	local dist=pifagor(-self.x+ship.x,-self.y+ship.y)
+	//self.speed=2.5-2*3^(-dist/30)
+	if(dist>=100) then 
+		
+		self.speed=ship.maxspeed*2
+		self.turning_d=0.01
+	else
+	self.speed=1.6
+	self.turning_d=0.003
+	end
+
 	local period=4
 	for i=2,#self.segments do 
 		add_enemy_collider(self.segments[i])
@@ -1284,17 +1303,17 @@ function bh_fly_towards_ship(a)
 end
 
 function bh_snake_towards_ship(self)
-	local td=0.003
-	if self.turning_d then
-		td=self.turning_d
-	end
+
+
+	td=self.turning_d
+
 	local as=sin(self.angle)
 	local ac=cos(self.angle)
 	local ff=(-self.x+ship.x)*as-(-self.y+ship.y)*ac
 	if(ff>0) then
-			self.angle+=0.003
+			self.angle+=td
 		else
-			self.angle-=0.003
+			self.angle-=td
 		end
 	local angle=self.angle+sin(self.seed/100+tt/150)/10
 	self.x+=cos(angle)*self.speed
@@ -1341,7 +1360,7 @@ function bh_shoot_at_player(a)
 	offset=randb(0,100)/100
 	ang=atan2(-a.x+ship.x,
 		-a.y+ship.y)
-	if tt%50==0 then
+	if tt%50==0 or (tt+10)%50==0 then
 	for i=0,0 do
 	add_object(
 		{
@@ -1612,8 +1631,8 @@ function od_drop_pellets(self)
 		add_object({group=list_particles,
 			x=self.x,
 			y=self.y,
-			dx=self.dx+randb(-4,5)/5,
-			dy=self.dy+randb(-4,5)/5},
+			dx=self.dx+randb(-4,5)/4,
+			dy=self.dy+randb(-4,5)/4},
 			template_pellet_hp)
 		end
 
@@ -1621,8 +1640,8 @@ function od_drop_pellets(self)
 			add_object({group=list_particles,
 				x=self.x,
 				y=self.y,
-				dx=self.dx+randb(-4,5)/5,
-				dy=self.dy+randb(-4,5)/5},
+				dx=self.dx+randb(-4,5)/4,
+				dy=self.dy+randb(-4,5)/4},
 				template_pellet_laser)
 			end
 end
@@ -1701,7 +1720,7 @@ template_pellet_hp={
 	damage=-3,
 	c1=9,
 	c2=7,
-	on_hit={remove_object}
+	on_hit={function ()sfx(3)end,remove_object}
 }
 
 template_pellet_laser={
@@ -1711,7 +1730,7 @@ template_pellet_laser={
 	c1=12,
 	c2=7,
 	damage=0,
-	on_hit={remove_object,function(self)  ship.laser_charge+=3 end}
+	on_hit={function ()sfx(3)end,remove_object,function(self)  ship.laser_charge+=3 end}
 }
 
 
@@ -1781,7 +1800,7 @@ template_enemy_fish=
 		parent=template_enemy,
 		hp_pellets=2,
 		laser_pellets=0,
-		hp=1,
+		hp=5,
 		c1=0,
 		c2=1,
 		spr=3,
