@@ -289,7 +289,7 @@ function game_update()
 end
 health_circle_r=100
 function draw_health_circle()
-	cls(14)
+	cls(0)
 
 	--[[local x=tt%50/50
 	//local current_r=100*(1-x)
@@ -772,33 +772,30 @@ end
 	
 function manage_player_collisions()
 	for p in all(player_collisions) do
-		if ship.states.parry>0 and 
-					collide(p,ship) 
-		then
-			if p.is_parriable and 
+		if collide(p,ship) then 
+			if ship.states.parry>0 then
+				if p.is_parriable and 
 						p.invincible==0 then
 						parry(p,ship)
+				end
+			else
+				if ship.invincible==0 then
+					for oh in all(p.on_hit) do
+						oh(p,ship)
+					end
+	
+					if p.is_pickup==true then
+						for op in all(ship.on_pickup) do
+								op(ship,p)
+						end
+					else
+						for oh in all(ship.on_hit) do
+							oh(ship,p)
+						end
+					end
+				end
 			end
 		end
-			
-			if ship.invincible==0 and 
-					collide_p(p,ship) 
-			then
-				for oh in all(p.on_hit) do
-					oh(p,ship)
-				end
-
-				if p.is_pickup==true then
-					for op in all(ship.on_pickup) do
-							op(ship,p)
-					end
-				else
-					for oh in all(ship.on_hit) do
-						oh(ship,p)
-					end
-				end
-			end
-
 	end
 end
 		
