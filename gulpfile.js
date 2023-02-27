@@ -43,14 +43,16 @@ gulp.task("build", function(){
         .pipe(insert.append(cart_assets))
         .pipe(gulp.dest(build_path)),
 
-      gulp.src([src_path + "**/*.lua"])
-        .pipe(concat(CART_NAME + ".minified.p8"))
+    
+    //  gulp.src([src_path + "**/*.lua"])
+    /*  .pipe(concat(CART_NAME + ".minified.p8"))
         .pipe(luaminify())
         .pipe(insert.prepend(build_header))
         .pipe(insert.append("\n"))
         .pipe(insert.append(cart_assets))
         .pipe(gulp.dest(build_path))
-    )
+      */ 
+        )
 
 });
 
