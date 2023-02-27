@@ -57,6 +57,13 @@ function _init()
 	cam2={x=0,y=0}
 end
 
+
+
+
+
+
+
+
 function start_menu()
 	game_starting=false
 	list_particles={}
