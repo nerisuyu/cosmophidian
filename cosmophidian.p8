@@ -48,7 +48,7 @@ animations handler:
 ship={}
 null=function() end
 background=2
-void=0
+void=7
 outline=0
 freeze_frame=0
 
@@ -66,9 +66,21 @@ function start_game_over()
 	//list_enemies={}
 	//list_projectiles={}
 	add_animation(function ()
-		fadeout(100)
-		start_menu()
+		//fadeout(20)
+		for i=0,100 do
+			fi=flr(fadout_amount/fadeout_args.fc)+1
+			for n=1,fadeout_args.pn do
+				pal(n,fades[n][fi],1)
+			end
+			yield()
+			fadout_amount+=0.01
+		end
 		fadout_amount=0
+		fi=flr(fadout_amount/fadeout_args.fc)+1
+		for n=1,fadeout_args.pn do
+			pal(n,fades[n][fi],1)
+		end
+		start_menu()
 	end)
 end
 
@@ -97,17 +109,20 @@ end
 
 
 function start_menu()
-	for i=0,15 do
-	pal(i,i)
-	end
+	_update60=menu_update
+	_draw=menu_draw
 	game_starting=false
 	list_particles={}
+	list_enemies={}
+	list_draw_objects={}
+	list_projectiles={}
+	list_stars={}
 	play_btn_color=7
 	shp=add_object({x=48,
 		y=32,
 		dx=0,
 		dy=0,
-		group=list_draw_objects,
+		group=list_particles,
 		update={function (self)
 			self.x+=cos(t()/10)/10
 			self.y=self.x/3+64+5*cos(self.x/300+t()/10)*(1+sin(t()/130))-45
@@ -118,8 +133,7 @@ function start_menu()
 	camera()
 	cls(0)
 	tt=0
-	_update60=menu_update
-	_draw=menu_draw
+	
 end
 
 function menu_draw()
@@ -224,7 +238,7 @@ function menu_update()
 				shp.y+=0.6-i/2000
 				yield()
 			end
-			fx_explode(shp)
+			//fx_explode(shp)
 
 			start_game()
 		end)
@@ -253,7 +267,7 @@ function start_game()
 						c1=12,
 						invincible=0,
 						speed=0,
-						on_hit={fx_explode,oh_take_damage,fx_ff},
+						on_hit={fx_explode,oh_take_damage},
 						on_pickup={oh_take_damage},
 						laser_charge=20,
 						laser_charge_max=40,
@@ -268,8 +282,8 @@ function start_game()
 						scale=1,
 						states={},
 
-						dash_cost=1,
-						laser_cost=0.1,
+						dash_cost=2,
+						laser_cost=0.2,
 						}
 	ship.states={
 		turning=0,
@@ -380,6 +394,9 @@ function game_draw()
 	draw_ship()
 
 	draw_ui()
+	print("difficulty:",cam.x-64,cam.y-64)
+	print(enemy_volume_max,cam.x-20,cam.y-64)
+
 	//draw_collisions()
  	//clear_collisions()
 	
@@ -697,7 +714,7 @@ function draw_laser(x,y,a,l,part)
 	x1=x+l*ca
 	y1=y+l*sa
 	//line(x,y,x1,y1,1)
-	decay_line(x,y,x1,y1,80,4,2,8,false)
+	decay_line(x,y,x1,y1,80,4,2,12,false)
 	decay_line(x,y,x1,y1,80,3,1,10,part)
 	decay_line(x,y,x1,y1,80,2,2,7,false)
 	
@@ -777,7 +794,7 @@ function clear_collisions()
 	for i=1,cr_dimensions do
 		for j=1,cr_dimensions do
 			collision_regions[i][j].enemies={}
- 		collision_regions[i][j].fprojectile={}
+ 			collision_regions[i][j].fprojectile={}
 			collision_regions[i][j].is_colliding=false
 		end
 	end
@@ -788,36 +805,28 @@ function collide_in_region(p,i,j)
 	for e in all(collision_regions[i][j].enemies) do
 		if collide(p,e)and p.invincible==0 and e.invincible==0 then
 			collision_regions[i][j].is_colliding=true
-			
 			for f in all(p.on_hit) do
 				f(p,e)
 			end
-			
-			
 			for f in all(e.on_hit) do
 				f(e,p)
 			end
-			
-			
 		end
 	end
 end
 	
-function parry(self,other)
-	for op in all(self.on_parry) do
-		op(self,other)
-	end
-end
-	
+
 function manage_player_collisions()
 	for p in all(player_collisions) do
 		if collide(p,ship) then 
 			if ship.states.parry>0 then
 				if p.is_parriable and 
 						p.invincible==0 then
-						parry(p,ship)
-				end
-			else
+							for op in all(p.on_parry) do
+								op(p,ship)
+							end
+						end
+					else
 				if ship.invincible==0 then
 					for oh in all(p.on_hit) do
 						oh(p,ship)
@@ -839,7 +848,6 @@ function manage_player_collisions()
 end
 		
 
-	
 function manage_collisions()
 	for i=2,cr_dimensions-1 do
 		for j=2,cr_dimensions-1 do
@@ -894,7 +902,7 @@ function manage_collisions()
 		end
 end
 
-
+--[[
 function draw_collisions()
 	local h=(cr_border*2*cr_cell+128)/(cr_dimensions)
 	
@@ -937,6 +945,7 @@ function draw_collisions()
 		end
 	end
 end
+]]
 -->8
 
 function get_available_enemy_volume(list)
@@ -952,14 +961,14 @@ function manage_enemy_spawning()
 	if(tt%100==0) then
 	
 	cram_enemy({group=list_enemies,
-		volume=40,
+		volume=60,
 		c1=7,
 		c2=8,
 		c3=7,
 		speed=1.9,
-		hp=20,
-		volume_added=3,
-		l=80,
+		hp=80,
+		l=100,
+		volume_added=10,
 		snake_width=5},
 		template_snake)
 	cram_enemy({group=list_enemies,
