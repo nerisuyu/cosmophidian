@@ -1,3 +1,15 @@
+
+
+//TODO locate better enemy spawn
+//TODO boss health and name ui
+///optional
+//TODO triangle trail 
+//TODO missiles
+//TODO for missiles color ramp drw and size ramp upd for explosion 
+
+//FIXME camera bugs out on game start
+
+
 enemies:
 
 -лазерные челы, заряжают выстрел, замедляясь и выстеливают очень быструю пулю/очередь
