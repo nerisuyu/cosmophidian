@@ -1,14 +1,15 @@
 
-
-//TODO locate better enemy spawn
+//TODO missiles
+//TODO Highscore
+//TODO set the release date 
 //TODO boss health and name ui
 ///optional
 //TODO triangle trail 
-//TODO missiles
+
 //TODO for missiles color ramp drw and size ramp upd for explosion 
 
 //FIXME camera bugs out on game start
-
+//FIXME parry
 
 enemies:
 
