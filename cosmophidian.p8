@@ -229,7 +229,7 @@ function start_game()
 	music(5,100,5)
 	
 	enemy_volume_max=30
-	despawn_distance=150
+	despawn_distance=180
 	ship={x=64,y=64,dx=0,dy=0,
 						ax=0,ay=0,
 						hp=40,
@@ -293,7 +293,6 @@ end
 
 	
 function game_update()
-
 	cam2.x+=(ship.x-cam2.x)/4
 	cam2.y+=(ship.y-cam2.y)/4
 	if freeze_frame >0 then
@@ -378,6 +377,7 @@ function game_draw()
 
 	//draw_collisions()
  	//clear_collisions()
+	//draw_average_position()
 	
 	--[[
 	print(#projectiles,cam.x-64,cam.y-10,7)
@@ -943,10 +943,19 @@ function get_available_enemy_volume(list)
 	return enemy_volume_max-enemy_volume_current
 end
 
-
+movement_vector={x=0,y=0}
+prev_ship_position={x=0,y=0}
 function manage_enemy_spawning()
-	if(tt%100==0) then
-	
+		if tt%120==0 then
+			local current_position={x=ship.x,y=ship.y}
+			movement_vector.x=(current_position.x-prev_ship_position.x)/120
+			movement_vector.y=(current_position.y-prev_ship_position.y)/120
+			prev_ship_position = current_position
+		end
+		
+		
+		if(tt%100==0) then
+		--[[
 	cram_enemy({group=list_enemies,
 		volume=60,
 		c1=13,
@@ -958,6 +967,7 @@ function manage_enemy_spawning()
 		volume_added=10,
 		snake_width=5},
 		template_snake)
+		]]
 	cram_enemy({group=list_enemies,
 			volume=7,
 			c1=7,
@@ -970,28 +980,61 @@ function manage_enemy_spawning()
 			on_hit={fx_dissolve,oh_take_damage},
 			update={bh_face_towards_ship,bh_shoot_at_player, bh_hitbox}},
 		template_enemy)
-	
+	--[[
 	cram_enemy({group=list_enemies,
-			volume_added=4,
+			volume_added=2,
 			volume=3,
 			scale=0.7,
 			speed=1.9},
 		template_enemy_fish)
-		
+		cram_enemy({group=list_enemies,
+			volume_added=2,
+			volume=3,
+			scale=0.7,
+			speed=1.9},
+		template_enemy_fish)
+		cram_enemy({group=list_enemies,
+			volume_added=2,
+			volume=3,
+			scale=0.7,
+			speed=1.9},
+		template_enemy_fish)
+		]]
 	end
 end
 
+
 function get_enemy_spawn_location()
+	local maxx=100
+	local minn=70
+	local desperse=80
+	local ass={x=movement_vector.x*55+randb(-desperse,desperse),
+	y=movement_vector.y*55+randb(-desperse,desperse),
+	}
+	
+	ass.x=sgn(ass.x)*min(abs(ass.x),maxx)
+	ass.y=sgn(ass.y)*min(abs(ass.y),maxx)
 
+	if not ((abs(ass.x))>minn) then
+	ass.y=sgn(ass.y)*max(abs(ass.y),minn)
+	end 
+	if not ((abs(ass.y))>minn) then
+	ass.x=sgn(ass.x)*max(abs(ass.x),minn)
+	end 
+	ass.x+=ship.x
+	ass.y+=ship.y
+	ass.angle=randb(-10,10)
 
-	local a={x=randb(-30,30),y=randb(-30,30)}
-	if a.x>0 then a.x+=75 else a.x-=75 end
-	if a.y>0 then a.y+=75 else a.y-=75 end
-	a.x+=ship.x
-	a.y+=ship.y
-	a.angle=randb(-10,10)
-	return a
+	return ass
 end
+
+--[[
+function draw_average_position()
+	ass=get_enemy_spawn_location()
+	circ(ship.x+movement_vector.x,ship.y+movement_vector.y,10,0)
+	circ(ass.x,ass.y,20,7)
+end
+]]
 
 function cram_enemy(args,template)
 	if get_table_combination(args,template).volume<=
@@ -1195,6 +1238,8 @@ function bh_remove_if_far_away(self,distance)
 end
 
 
+
+
 function bh_update_dead_snake(self)
 	local death_period=3
 	if(tt%death_period==0)then
@@ -1388,21 +1433,23 @@ function bh_update_pellet(self)
 	
 end
 
-function bh_shoot_at_player(a)
+function bh_shoot_at_player(self)
 	offset=randb(0,100)/100
-	ang=atan2(-a.x+ship.x,
-		-a.y+ship.y)
+	ang=atan2(-self.x+ship.x,
+		-self.y+ship.y)
 	if tt%60==0 or (tt+5)%60==0 or (tt+10)%60==0 then
 	for i=0,0 do
 		sfx(39,3)
+		shoot_missile(self,ship)
+		--[[
 	add_object(
 		{
 		group=list_projectiles,
 		friendly=false,
 		hp=240,
 		speed=0.1,
-		x=a.x,
-		y=a.y,
+		x=self.x,
+		y=self.y,
 		radia=7,
 		seed=i/3,
 		speed=1,//+randb(-2,2)/20,
@@ -1414,7 +1461,9 @@ function bh_shoot_at_player(a)
 		damage=2,
 		on_death={fx_dissolve,remove_object}},
 		template_bullet)
+		]]
 		end
+		
 	end	
 end
 
@@ -1765,6 +1814,47 @@ template_basic_particle={
     draw=drw_circle,
 	on_death={remove_object}
 }
+
+function noise(x)
+	return sin (2 * x) + sin(3.14 * x)
+end
+
+function shoot_missile(self,other)
+	local new_missile=add_object({group=list_particles,
+		x=self.x,
+		y=self.y,
+		c1=self.c1},
+		template_missile)
+	local lifespan=new_missile.hp 
+	local trajectory_start = table_clone(self)
+	local trajectory_end = table_clone(other)
+	add_animation(function ()
+		for i=0,lifespan do
+			local part=i/lifespan
+		new_missile.x=trajectory_start.x+(part^3)*(trajectory_end.x-trajectory_start.x)+2*noise(tt+part)*(1-(1-2*part)^2)
+		new_missile.y=trajectory_start.y+(part^3)*(trajectory_end.y-trajectory_start.y)+2*noise(tt+part+2)*(1-(1-2*part)^2)
+		yield();
+		end
+	end)
+end
+function bh_leave_trail(self)
+	add_object({group=list_particles,
+			x=self.x,
+			y=self.y,
+			hp=60,
+			c1=self.c1},
+			template_basic_particle)
+end
+
+template_missile={
+	parent=template_basic_particle,
+	hp=120,
+	collider_r=2,
+	update={bh_tick_hp},
+	on_death={remove_object},
+	draw=drw_debug
+}
+
 
 template_pellet={
 	parent=template_basic_particle,
