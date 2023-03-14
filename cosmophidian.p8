@@ -1441,6 +1441,7 @@ end
 
 function bh_cycle_pallete_and_size(self)
 	local t=1-self.hp/self.maxhp
+	self.fillp=self.fillp_cycle[ceil(t*#self.fillp_cycle)]
 	self.collider_r=self.collider_r_cycle[ceil(t*#self.collider_r_cycle)]
 	self.c1=self.pallete_cycle[ceil(t*#self.pallete_cycle)]
 end
@@ -1747,6 +1748,8 @@ end
 template_empty={
 	pallete_cycle={0},
 	collider_r_cycle={10},
+	fillp_cycle={0x0000},
+	fillp=0x0000,
 	x=0,
 	y=0,
 	dx=0,
@@ -1823,7 +1826,9 @@ function shoot_missile(self,other)
 		spr=14,
 		update={bh_tick_hp,bh_cycle_pallete_and_size},
 		draw=function(self)
+			fillp(self.fillp)
 			circ(self.x,self.y,self.collider_r,self.c1)
+			fillp()  
 		end,
 	},template_basic_particle)
 
@@ -1831,7 +1836,7 @@ function shoot_missile(self,other)
 
 	add_animation(function ()
 		for i=1,lifespan+1 do
-		local t=(i/lifespan)^1.5
+		local t=(i/lifespan)^1.2
 
 		new_missile.x= ((1-t)^3)*p0.x+3*((1-t)^2)*t*p1.x+3*(1-t)*(t^2)*p2.x+(t^3)*p3.x
 		new_missile.y= ((1-t)^3)*p0.y+3*((1-t)^2)*t*p1.y+3*(1-t)*(t^2)*p2.y+(t^3)*p3.y
@@ -1860,7 +1865,7 @@ end
 
 template_missile={
 	parent=template_basic_particle,
-	hp=40,
+	hp=80,
 	collider_r=2,
 	update={bh_tick_hp,bh_leave_trail},
 	on_death={remove_object,fx_explode,fx_explode,fx_explode},
@@ -1952,10 +1957,13 @@ template_explosion={
 		parent=template_basic_particle,
 		pallete_cycle={7,6,13},
 		collider_r_cycle={2,2},
-		maxhp=50,
+		fillp_cycle={0x0000,0x0000,0x0000,0b0010001000100010.1,0b0011001100110011.1,0b1011101110111011.1},
+		maxhp=60,
 		hp=50,
 		draw=function(self)
+			fillp(self.fillp)
 			circfill(self.x,self.y,self.collider_r,self.c1)
+			fillp()
 		end,
 		update={bh_tick_hp,bh_cycle_pallete_and_size},
 		on_death={remove_object,remove_if_far}
