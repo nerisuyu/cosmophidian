@@ -249,12 +249,12 @@ function start_game()
 						laser_charge_threshold=15,
 						nosex=0,
 						nosey=0,
-						acc=0.10,
+						acc=0.08,
 						lacc=0.008,
 						dcc=0.007,//0.005
 						turning_d=0.1,
-						maxspeed=1.8,
-						scale=1,
+						maxspeed=1.5,
+						scale=0.7,
 						states={},
 
 						dash_cost=2,
@@ -370,15 +370,15 @@ function game_draw()
 	
 
 	draw_ship()
-
 	draw_ui()
+	--[[
+	
 	print("difficulty:",cam.x-64,cam.y-64)
 	print(enemy_volume_max,cam.x-20,cam.y-64)
 
-	//draw_collisions()
- 	//clear_collisions()
-	//draw_average_position()
-	
+
+	print(get_available_enemy_volume(list_enemies),cam.x-64,cam.y-54)
+	]]
 	--[[
 	print(#projectiles,cam.x-64,cam.y-10,7)
 	print(#enemies,cam.x-64,cam.y-54,7)
@@ -456,16 +456,22 @@ function upd_ship()
 
 	ship.turning_d=base_turning
 	
-	if ship.states.shooting then
-		ship.turning_d=shoot_turning
-	end
 
 	if ship.states.parry>0 then
 		ship.states.parry-=1
 		ship.states.laser=false
 		ship.states.shooting=false
 	end
-	
+
+	if ship.states.laser then
+		ship.states.shooting=false
+	end
+
+	if ship.states.shooting then
+		ship.turning_d=shoot_turning
+	end
+
+
 	if ship.states.flying then
 		//sfx(5)
 		add_object({group=list_particles,
@@ -530,7 +536,7 @@ function upd_ship()
 	local as=sin(ship.angle)
 	
 	ship.speed=pifagor(ship.dx,ship.dy)
-	
+
 	ship.x+=ship.dx
 	ship.y+=ship.dy
 	ship.dx+=ship.ax
@@ -629,7 +635,7 @@ function handle_input()
 	if btn(🅾️) then
 		local qwerty=ship.angle
 		
-		//FIXME parry
+		//fixme parry
 		if ship.states.parry_cd <0 and (ship.laser_charge>ship.dash_cost or (ship.laser_charge>0 and ship.laser_charge-ship.dash_cost<=0))then
 			sfx(32,3)
 			ship.laser_charge-=ship.dash_cost
@@ -955,25 +961,23 @@ function manage_enemy_spawning()
 		
 		
 		if(tt%100==0) then
-		--[[
+		
 	cram_enemy({group=list_enemies,
-		volume=60,
+		volume=80,
 		c1=13,
 		c2=8,
 		c3=13,
-		speed=1.9,
 		hp=80,
 		l=20,
-		volume_added=10,
-		snake_width=5},
+		volume_added=10},
 		template_snake)
-		]]
+		
 	cram_enemy({group=list_enemies,
-			volume=7,
+			volume=20,
+			scale=0.5,
 			c1=7,
 			spr=4,
 			c2=1,
-			speed=1.3,
 			volume_added=0.5,
 			collider_r=8,
 			draw=drw_enemy_rsprite,
@@ -983,21 +987,7 @@ function manage_enemy_spawning()
 	--[[
 	cram_enemy({group=list_enemies,
 			volume_added=2,
-			volume=3,
-			scale=0.7,
-			speed=1.9},
-		template_enemy_fish)
-		cram_enemy({group=list_enemies,
-			volume_added=2,
-			volume=3,
-			scale=0.7,
-			speed=1.9},
-		template_enemy_fish)
-		cram_enemy({group=list_enemies,
-			volume_added=2,
-			volume=3,
-			scale=0.7,
-			speed=1.9},
+			volume=7},
 		template_enemy_fish)
 		]]
 	end
@@ -1300,7 +1290,7 @@ function bh_update_snake(self)
 		self.speed=ship.maxspeed*2
 		self.turning_d=0.01
 	else
-	self.speed=1.6
+	self.speed=self.maxspeed
 	self.turning_d=0.003
 	end
 
@@ -1437,7 +1427,7 @@ function bh_shoot_at_player(self)
 	offset=randb(0,100)/100
 	ang=atan2(-self.x+ship.x,
 		-self.y+ship.y)
-	if tt%60==0 or (tt+5)%60==0 or (tt+10)%60==0 then
+	if (tt+ceil(self.y))%100==0 or (tt+ceil(self.y)+20)%100==0 or (tt+ceil(self.y)+40)%100==0   then //
 	for i=0,0 do
 		sfx(39,3)
 		shoot_missile(self,ship)
@@ -1820,38 +1810,71 @@ function noise(x)
 end
 
 function shoot_missile(self,other)
-	local new_missile=add_object({group=list_particles,
+	
+	local new_missile=add_object({group=list_projectiles,
 		x=self.x,
 		y=self.y,
 		c1=self.c1},
 		template_missile)
+	
 	local lifespan=new_missile.hp 
-	local trajectory_start = table_clone(self)
-	local trajectory_end = table_clone(other)
+	local p0 = table_clone(self)
+	local p2 = {x=other.x+other.dx*lifespan,y=other.y+other.dy*lifespan}
+	local p1 = {x=(p0.x+p2.x)/2+randb(-50,50),y=(p0.y+p2.y)/2+randb(-50,50)}
+
+
+	add_object({group=list_particles,
+		x=p2.x,
+		y=p2.y,
+		collider_r=8,
+		c1=background,
+		c2=10,
+		hp=template_missile.hp,
+		spr=14,
+		draw=drw_debug,
+	},template_basic_particle)
+
+	
+
 	add_animation(function ()
-		for i=0,lifespan do
-			local part=i/lifespan
-		new_missile.x=trajectory_start.x+(part^3)*(trajectory_end.x-trajectory_start.x)+2*noise(tt+part)*(1-(1-2*part)^2)
-		new_missile.y=trajectory_start.y+(part^3)*(trajectory_end.y-trajectory_start.y)+2*noise(tt+part+2)*(1-(1-2*part)^2)
+		for i=1,lifespan+1 do
+		local t=(i/lifespan)^2.3
+		new_missile.x=(1-t)*((1-t)*p0.x+t*p1.x)+t*((1-t)*p1.x+t*p2.x)
+		new_missile.y=(1-t)*((1-t)*p0.y+t*p1.y)+t*((1-t)*p1.y+t*p2.y)
+		//new_missile.x=p0.x+(part^3)*(p2.x-p1.x)+2*noise(tt+part)*(1-(1-2*part)^2)
+		//new_missile.y=p0.y+(part^3)*(p2.y-p1.y)+2*noise(tt+part+2)*(1-(1-2*part)^2)
 		yield();
 		end
+		local expl=add_object({group=list_particles,
+			x=p2.x,
+			y=p2.y},
+		template_explosion)
+
+		for i=1,5 do
+		yield();
+		end
+		expl.hp=0
 	end)
 end
 function bh_leave_trail(self)
 	add_object({group=list_particles,
 			x=self.x,
 			y=self.y,
-			hp=60,
+			hp=20,
+			c1=7,
+			c2=background,
+			collider_r=1,
+			draw=drw_circle,
 			c1=self.c1},
 			template_basic_particle)
 end
 
 template_missile={
 	parent=template_basic_particle,
-	hp=120,
+	hp=40,
 	collider_r=2,
-	update={bh_tick_hp},
-	on_death={remove_object},
+	update={bh_tick_hp,bh_leave_trail},
+	on_death={remove_object,fx_explode,fx_explode,fx_explode},
 	draw=drw_debug
 }
 
@@ -1874,7 +1897,7 @@ template_pellet={
 
 template_pellet_hp={
 	parent=template_pellet,
-	pals={{2,outline}},
+	pals={{2,background}},
 	spr=13,
 	damage=-3,
 	c1=9,
@@ -1884,7 +1907,7 @@ template_pellet_hp={
 
 template_pellet_laser={
 	parent=template_pellet,
-	pals={{9,12},{2,outline}},
+	pals={{9,12},{2,background}},
 	spr=13,
 	c1=12,
 	c2=7,
@@ -1911,7 +1934,7 @@ template_enemy={
 	laser_pellets=1,
 	remove_if_far=true,
 	speed=0.1,
-	scale=1,
+	scale=0.8,
 	volume=2,
 	collider_r=5,
 	group=list_enemies,
@@ -1928,9 +1951,21 @@ template_enemy={
 	on_parry={}
 	}
 
+template_explosion={
+	parent=template_enemy,
+	is_parriable=false,
+	damage=5,
+	collider_r=6,
+	c1=7,
+	hp=100,
+	draw=drw_debug,
+	update={bh_hitbox},
+	on_death={remove_object,remove_if_far,fx_dissolve}
+	}
 
 template_snake={
 	parent=template_empty,
+	maxspeed=1.3,
 	speed=1,
 	volume=2,
 	collider_r=5,
@@ -1939,7 +1974,7 @@ template_snake={
 	c1=10,
 	c2=8,
 	c3=0,
-	snake_width=9,
+	snake_width=3,
 	sd_rate=0.95,
 	hp=80,
 	l=3,
@@ -1964,10 +1999,10 @@ template_enemy_fish=
 		c1=0,
 		c2=1,
 		spr=3,
-		speed=1.8,
+		speed=1.2,
 		collider_r=3,
 		turning_d=0.5,
-		scale=0.5,
+		scale=0.3,
 		damage=3,
 		volume=1,
 		volume_added=0.5,
@@ -1986,7 +2021,7 @@ template_enemy_fish=
 		hp=80,
 		c1=12,
 		c2=background,
-		speed=4,
+		speed=3,
 		
 		is_parriable=true,
 		draw=drw_debug,
@@ -2128,14 +2163,14 @@ end
 
 
 __gfx__
-00000000111aa11111177111111dd11111888811000000000000000000c00c000007700000000000006c000000076c0000000000002220000000000000000000
-00000000111aa11111177111111dd1111188881100000000000000000111111007777770000000000c000000000000c000a0a000022222000000000000000000
-00700700111aa1111117711111dddd11118dd811000cc000000aa00011c11c110777777000070000c00000000000000c00a0a000222722200000000000000000
-0007700011aaaa11117aa71111dddd1111dddd11000cc000000aa0001cc11cc17777777700777000600000077000000c00a0a000227992200000000000000000
-0007700011aaaa11117aa711111dd111111dd11100cccc0000adda001c1111c17777777777777770700000067000000600000000222922200000000000000000
-0070070011aaaa1111aaaa11111dd111111dd1110cccccc00adddda01111111107777770000000000000000cc00000000a000a00022222000000000000000000
-000000001aaaaaa11aaaaaa111dddd1111dddd110000000000000000111111110777777000000000000000c0060000000aaaaa00002220000000000000000000
-000000001aaaaaa11aaaaaa111d11d1111d11d110000000000000000011111100007700000000000000cc60000cc000000000000000000000000000000000000
+00000000111aa11111177111111dd11111888811000000000000000000c00c000007700000000000006c000000076c0000000000002220000088880000000000
+00000000111aa11111177111111dd1111188881100000000000000000111111007777770000000000c000000000000c000a0a000022222000800008000000000
+00700700111aa1111117711111dddd11118dd811000cc000000aa00011c11c110777777000070000c00000000000000c00a0a000222722208880880800000000
+0007700011aaaa11117aa71111dddd1111dddd11000cc000000aa0001cc11cc17777777700777000600000077000000c00a0a000227992208088000800000000
+0007700011aaaa11117aa711111dd111111dd11100cccc0000adda001c1111c17777777777777770700000067000000600000000222922208008800800000000
+0070070011aaaa1111aaaa11111dd111111dd1110cccccc00adddda01111111107777770000000000000000cc00000000a000a00022222008080080800000000
+000000001aaaaaa11aaaaaa111dddd1111dddd110000000000000000111111110777777000000000000000c0060000000aaaaa00002220008800008800000000
+000000001aaaaaa11aaaaaa111d11d1111d11d110000000000000000011111100007700000000000000cc60000cc000000000000000000000888888000000000
 00000000000000a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000aa0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000aaa000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
