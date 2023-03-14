@@ -945,7 +945,7 @@ function manage_enemy_spawning()
 	if(tt%100==0) then
 		
 	cram_enemy({group=list_enemies,
-		volume=20,
+		volume=60,
 		c1=13,
 		c2=8,
 		c3=13,
@@ -1814,7 +1814,7 @@ function shoot_missile(self,other)
 		x=p3.x,
 		y=p3.y,
 		collider_r=8,
-		collider_r_cycle={8,8,9,10},
+		collider_r_cycle={8,8,7,6,4,1},
 		pallete_cycle={10,9,8},
 		c1=background,
 		c2=10,
