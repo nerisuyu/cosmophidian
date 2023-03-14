@@ -37,10 +37,7 @@ end
 function start_game_over()
 	_update60=game_over_draw
 	_draw=game_over_update
-	//list_enemies={}
-	//list_projectiles={}
 	add_animation(function ()
-		//fadeout(20)
 		for i=0,100 do
 			fi=flr(fadout_amount/fadeout_args.fc)+1
 			for n=1,fadeout_args.pn do
@@ -249,7 +246,7 @@ function start_game()
 						laser_charge_threshold=15,
 						nosex=0,
 						nosey=0,
-						acc=0.08,
+						acc=0.1,
 						lacc=0.008,
 						dcc=0.007,//0.005
 						turning_d=0.1,
@@ -329,13 +326,6 @@ health_circle_r=100
 function 
 	draw_health_circle()
 	cls(void)
-
-	--[[local x=tt%50/50
-	//local current_r=100*(1-x)
-	//circ(ship.x,ship.y,current_r,0)
-	//local current_r=100*(1-x^3)
-	//circ(ship.x,ship.y,current_r,7)]]
-	
 	local x=1-ship.hp/ship.maxhp
 	local current_r=92*(1-x^1.25)
 	if x==0 then
@@ -375,8 +365,6 @@ function game_draw()
 	
 	print("difficulty:",cam.x-64,cam.y-64)
 	print(enemy_volume_max,cam.x-20,cam.y-64)
-
-
 	print(get_available_enemy_volume(list_enemies),cam.x-64,cam.y-54)
 	]]
 	--[[
@@ -387,9 +375,6 @@ function game_draw()
 	print(ship.hp,ship.x,ship.y+10,15)
 	print(ship.states.parry,ship.x+32,ship.y+32)
 	]]--
-
-	
-	
 	end
 -->8
 //ship update and input
@@ -401,53 +386,7 @@ function draw_ui()
 	if(ship.laser_charge>0)then
 	rectfill(cam.x-64,cam.y+64,cam.x-64+128*(ship.laser_charge)/ship.laser_charge_max,cam.y+60,12)
 	end
-	--[[
-	local ri_y=34
-	local l=30
-	local laser_bar_color=12
-	local hp_bar_color=8
-	
-	if ship.laser_charge>=ship.laser_charge_max then 
-		if tt%16>8 then	
-			laser_bar_color=7
-		end
-	else
-	if ship.laser_charge>ship.laser_charge_threshold then 
-		if tt%32>16 then	
-			laser_bar_color=7
-		end
-	end
-	end	
-
-	
-	if ship.hp<=0.45*ship.maxhp then 
-		if tt%15>8 then	
-		hp_bar_color=9
-		end
-	end
-	//print(ship.hp,ship.x+10,ship.y)
-	//print(ship.laser_charge,ship.x+10,ship.y+10)
-	//rectfill(cam.x-64,cam.y-3+ri_y,cam.x-58,cam.y+24+ri_y,9)
-	if ship.laser_charge>0 then
-	//rectfill(cam.x-64,ri_y+cam.y+24-(ship.laser_charge/ship.laser_charge_max)*l,cam.x-58,ri_y+cam.y+24,laser_bar_color)
-	end
-	fillp()
-	clip(0,128-4-(ship.laser_charge/ship.laser_charge_max)*l,128,128)
-	pal(12,laser_bar_color)
-	spr(162,cam.x-64+2,ri_y+cam.y-4,1,5)
-	pal()
-	clip()
-
-	clip(4,0,(ship.hp/ship.maxhp)*l,128)
-	pal(8,hp_bar_color)
-	spr(212,cam.x-64+4,cam.y+54,4,1)
-	pal()
-	clip()
-	spr(176,cam.x-64,ri_y+cam.y-10,2,5)
-	spr(226,cam.x-48,ri_y+cam.y-10+24,3,2)
-	]]--
 end
-
 
 
 function upd_ship()
@@ -580,11 +519,7 @@ function draw_ship()
 	end
 
 	if ship.states.laser then 
-		draw_laser(ship.nosex,
-													ship.nosey,
-													ship.angle,
-													laser.length,
-													false)
+		draw_laser(ship.nosex,ship.nosey,ship.angle,laser.length,false)
 		rspr(2,ship.x,
 									ship.y,
 									ship.angle,
@@ -608,7 +543,6 @@ end
 
 function handle_input()
 	ship.states.turning=0
-	
 	ship.states.shooting=false
 	ship.states.laser=false
 	if btn(⬅️) and not btn(➡️) then 
@@ -709,10 +643,7 @@ function draw_laser(x,y,a,l,part)
 	//line(x,y,x1,y1,1)
 	decay_line(x,y,x1,y1,80,4,2,12,false)
 	decay_line(x,y,x1,y1,80,3,1,10,part)
-	decay_line(x,y,x1,y1,80,2,2,7,false)
-	
-	
-				
+	decay_line(x,y,x1,y1,80,2,2,7,false)		
 end
 
 
@@ -839,8 +770,59 @@ function manage_player_collisions()
 		end
 	end
 end
-		
+	
+function manage_collisions()
+	for i=2,cr_dimensions-1 do
+		for j=2,cr_dimensions-1 do
+			for p in all(collision_regions[i][j].fprojectile) do
+				for u=i-1,i+1 do
+					for y=j-1,j+1 do 
+					collide_in_region(p,u,y)
+					end
+				end
+			end
+		end
+	end
+	i=1
+		for j=2,cr_dimensions-1 do
+			for p in all(collision_regions[i][j].fprojectile) do
+				collide_in_region(p,i,j)
+				collide_in_region(p,i+1,j)
+				collide_in_region(p,i,j+1)
+				collide_in_region(p,i,j-1)
+			end
+		end
+	i=cr_dimensions
+		for j=2,cr_dimensions-1 do
+			for p in all(collision_regions[i][j].fprojectile) do
+				collide_in_region(p,i,j)
+				collide_in_region(p,i,j+1)
+				collide_in_region(p,i-1,j)
+				collide_in_region(p,i,j-1)
+			end
+		end
+	j=1
+		for i=2,cr_dimensions-1 do
+				for p in all(collision_regions[i][j].fprojectile) do
+				collide_in_region(p,i,j)
+				collide_in_region(p,i+1,j)
+				collide_in_region(p,i-1,j)
+				collide_in_region(p,i,j+1)
+			end
+		end
+	j=cr_dimensions
+		for i=2,cr_dimensions-1 do
+			for p in all(collision_regions[i][j].fprojectile) do
+				collide_in_region(p,i,j)
+				collide_in_region(p,i-1,j)
+				collide_in_region(p,i+1,j)
+				collide_in_region(p,i,j-1)
+			end
+		end
+end
 
+
+--[[
 function manage_collisions()
 	for i=2,cr_dimensions-1 do
 		for j=2,cr_dimensions-1 do
@@ -894,6 +876,7 @@ function manage_collisions()
 			end
 		end
 end
+]]--
 
 --[[
 function draw_collisions()
@@ -959,21 +942,20 @@ function manage_enemy_spawning()
 			prev_ship_position = current_position
 		end
 		
-		
-		if(tt%100==0) then
+	if(tt%100==0) then
 		
 	cram_enemy({group=list_enemies,
-		volume=80,
+		volume=20,
 		c1=13,
 		c2=8,
 		c3=13,
-		hp=80,
+		hp=40,
 		l=20,
 		volume_added=10},
 		template_snake)
 		
 	cram_enemy({group=list_enemies,
-			volume=20,
+			volume=30,
 			scale=0.5,
 			c1=7,
 			spr=4,
@@ -984,12 +966,12 @@ function manage_enemy_spawning()
 			on_hit={fx_dissolve,oh_take_damage},
 			update={bh_face_towards_ship,bh_shoot_at_player, bh_hitbox}},
 		template_enemy)
-	--[[
+	
 	cram_enemy({group=list_enemies,
 			volume_added=2,
 			volume=7},
 		template_enemy_fish)
-		]]
+		
 	end
 end
 
@@ -1250,22 +1232,22 @@ function bh_update_snake(self)
 			oh_take_damage(self,other)
 		end
 		for i=0,self.l do
-			local segment={}
-			segment.seed=randb(-100,100)
-			segment.on_hit={ff,oh_knockback_other}
-			segment.x=self.x
-			segment.angle=0
-			segment.hp_pellets=1
-			segment.laser_pellets=0
-			segment.speed=1
-			segment.damage=4
-			segment.inv_damage=20
-			segment.is_parriable=false
-			segment.y=self.y+10+i*10
-			segment.dx=0
-			segment.invincible=0
-			segment.dy=0
-			segment.collider_r=min(self.l-i+1,self.snake_width)
+			local segment={
+				seed=randb(-100,100),
+				on_hit={ff,oh_knockback_other},
+				x=self.x,
+				angle=0,
+				hp_pellets=1,
+				laser_pellets=0,
+				speed=1,
+				damage=4,
+				inv_damage=20,
+				is_parriable=false,
+				y=self.y+10+i*10,
+				dx=0,
+				invincible=0,
+				dy=0,
+				collider_r=min(self.l-i+1,self.snake_width)}
 			if i%2==0 then
 				segment.c1=self.c1
 			else
@@ -1457,6 +1439,13 @@ function bh_shoot_at_player(self)
 	end	
 end
 
+function bh_cycle_pallete_and_size(self)
+	local t=1-self.hp/self.maxhp
+	self.collider_r=self.collider_r_cycle[ceil(t*#self.collider_r_cycle)]
+	self.c1=self.pallete_cycle[ceil(t*#self.pallete_cycle)]
+end
+
+
 function oh_take_damage(self,other)
 	if self.invincible==0 then
 		self.hp-=other.damage
@@ -1632,9 +1621,6 @@ function fadeout(frames)
 		  yield();
 	end
 end
-function fpal(c1,c2,arg)
-	pal(c1,fades[c2][flr(fadout_amount/fadeout_args.fc)+1],arg)
-end
 	
 function fx_explode(a)
 	shake_explode(0.1)
@@ -1759,6 +1745,8 @@ function od_raise_laser_charge(self)
 end
 
 template_empty={
+	pallete_cycle={0},
+	collider_r_cycle={10},
 	x=0,
 	y=0,
 	dx=0,
@@ -1778,6 +1766,7 @@ template_empty={
 	c2=0,
 	c3=0,
 	hp=20,
+	maxhp=20,
 	volume_added=0,
 	laser_pellets=0,
 	hp_pellets=0,
@@ -1785,16 +1774,12 @@ template_empty={
 	inv_damage=10,
 	is_parriable=false,
 	friendly=false,
-	
     draw=drw_debug,
     on_hit={},
 	on_pickup={},
 	on_death={},
 	on_parry={}
 }
-
-
-
 
 template_basic_particle={
 	parent=template_empty,
@@ -1810,7 +1795,6 @@ function noise(x)
 end
 
 function shoot_missile(self,other)
-	
 	local new_missile=add_object({group=list_projectiles,
 		x=self.x,
 		y=self.y,
@@ -1819,37 +1803,48 @@ function shoot_missile(self,other)
 	
 	local lifespan=new_missile.hp 
 	local p0 = table_clone(self)
-	local p2 = {x=other.x+other.dx*lifespan,y=other.y+other.dy*lifespan}
+	local p3 = {x=other.x+other.dx*lifespan,y=other.y+other.dy*lifespan}
+	local p2=  {x=p0.x+randb(-50,50),y=p0.y+randb(-50,50)}
 	local p1 = {x=(p0.x+p2.x)/2+randb(-50,50),y=(p0.y+p2.y)/2+randb(-50,50)}
+	
+
 
 
 	add_object({group=list_particles,
-		x=p2.x,
-		y=p2.y,
+		x=p3.x,
+		y=p3.y,
 		collider_r=8,
+		collider_r_cycle={8,8,9,10},
+		pallete_cycle={10,9,8},
 		c1=background,
 		c2=10,
 		hp=template_missile.hp,
+		maxhp=template_missile.hp,
 		spr=14,
-		draw=drw_debug,
+		update={bh_tick_hp,bh_cycle_pallete_and_size},
+		draw=function(self)
+			circ(self.x,self.y,self.collider_r,self.c1)
+		end,
 	},template_basic_particle)
 
 	
 
 	add_animation(function ()
 		for i=1,lifespan+1 do
-		local t=(i/lifespan)^2.3
-		new_missile.x=(1-t)*((1-t)*p0.x+t*p1.x)+t*((1-t)*p1.x+t*p2.x)
-		new_missile.y=(1-t)*((1-t)*p0.y+t*p1.y)+t*((1-t)*p1.y+t*p2.y)
-		//new_missile.x=p0.x+(part^3)*(p2.x-p1.x)+2*noise(tt+part)*(1-(1-2*part)^2)
-		//new_missile.y=p0.y+(part^3)*(p2.y-p1.y)+2*noise(tt+part+2)*(1-(1-2*part)^2)
+		local t=(i/lifespan)^1.5
+
+		new_missile.x= ((1-t)^3)*p0.x+3*((1-t)^2)*t*p1.x+3*(1-t)*(t^2)*p2.x+(t^3)*p3.x
+		new_missile.y= ((1-t)^3)*p0.y+3*((1-t)^2)*t*p1.y+3*(1-t)*(t^2)*p2.y+(t^3)*p3.y
+
+		//new_missile.x=(1-t)*((1-t)*p0.x+t*p1.x)+t*((1-t)*p1.x+t*p2.x)
+		//new_missile.y=(1-t)*((1-t)*p0.y+t*p1.y)+t*((1-t)*p1.y+t*p2.y)
 		yield();
 		end
 		local expl=add_object({group=list_particles,
-			x=p2.x,
-			y=p2.y},
+			x=p3.x,
+			y=p3.y},
 		template_explosion)
-
+		
 		for i=1,5 do
 		yield();
 		end
@@ -1859,14 +1854,8 @@ end
 function bh_leave_trail(self)
 	add_object({group=list_particles,
 			x=self.x,
-			y=self.y,
-			hp=20,
-			c1=7,
-			c2=background,
-			collider_r=1,
-			draw=drw_circle,
-			c1=self.c1},
-			template_basic_particle)
+			y=self.y},
+			template_trail_particle)
 end
 
 template_missile={
@@ -1884,10 +1873,11 @@ template_pellet={
 	damage=0,
 	inv_damage=0,
 	sd_rate=0.98,
+	c2=7,
 	hp=500,
 	speed=0.1,
 	collider_r=10,
-	spr=12,
+	spr=13,
 	draw=drw_spr,
 	on_hit={remove_object},
 	is_pickup=true,
@@ -1898,26 +1888,21 @@ template_pellet={
 template_pellet_hp={
 	parent=template_pellet,
 	pals={{2,background}},
-	spr=13,
 	damage=-3,
 	c1=9,
-	c2=7,
 	on_hit={function ()sfx(35,3)end,remove_object}
 }
 
 template_pellet_laser={
 	parent=template_pellet,
 	pals={{9,12},{2,background}},
-	spr=13,
 	c1=12,
-	c2=7,
-	damage=0,
 	on_hit={function ()sfx(35,3)end,remove_object,function(self)  ship.laser_charge+=3 end}
 }
 
 
 
-
+--[[
 template_text={
 	parent=template_empty,
 	c1=7,
@@ -1926,7 +1911,7 @@ template_text={
 	update={bh_tick_hp},
     draw=drw_text,
 	on_death={remove_object}
-}
+}]]
 
 template_enemy={
 	parent=template_empty,
@@ -1954,14 +1939,42 @@ template_enemy={
 template_explosion={
 	parent=template_enemy,
 	is_parriable=false,
-	damage=5,
-	collider_r=6,
+	damage=10,
+	collider_r=7,
 	c1=7,
 	hp=100,
 	draw=drw_debug,
 	update={bh_hitbox},
 	on_death={remove_object,remove_if_far,fx_dissolve}
 	}
+
+	template_trail_particle={
+		parent=template_basic_particle,
+		pallete_cycle={7,6,13},
+		collider_r_cycle={2,2},
+		maxhp=50,
+		hp=50,
+		draw=function(self)
+			circfill(self.x,self.y,self.collider_r,self.c1)
+		end,
+		update={bh_tick_hp,bh_cycle_pallete_and_size},
+		on_death={remove_object,remove_if_far}
+	}
+
+	--[[
+template_trail_particle={
+	parent=template_basic_particle,
+	pallete_cycle={7,7,10,1,1,1,1,1},
+	collider_r_cycle={0,3,2,2,1},
+	maxhp=20,
+	hp=20,
+	draw=function(self)
+		circfill(self.x,self.y,self.collider_r,self.c1)
+	end,
+	update={bh_tick_hp,bh_cycle_pallete_and_size},
+	on_death={remove_object,remove_if_far}
+}]]
+
 
 template_snake={
 	parent=template_empty,

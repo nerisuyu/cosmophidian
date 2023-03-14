@@ -1,5 +1,4 @@
 
-//TODO missiles
 //TODO Highscore
 //TODO set the release date 
 //TODO boss health and name ui
