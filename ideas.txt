@@ -1,7 +1,8 @@
-
+//TODO test performance, how much enemies is the limit for boss to spawn
 //TODO Highscore
-//TODO set the release date 
 //TODO boss health and name ui
+//TODO set the release date 
+
 ///optional
 //TODO triangle trail 
 
