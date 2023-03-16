@@ -1709,7 +1709,7 @@ template_empty={
 	laser_pellets=0,
 	hp_pellets=0,
 	damage=0,
-	inv_damage=10,
+	inv_damage=0,
 	is_parriable=false,
 	friendly=false,
     draw=drw_debug,
@@ -1886,22 +1886,22 @@ template_explosion={
 	on_death={remove_object,remove_if_far,fx_dissolve}
 	}
 
-	template_trail_particle={
-		parent=template_basic_particle,
-		pallete_cycle={7,6,13},
-		collider_r_cycle={2,2},
-		//fillp_cycle={0x0000,0x0000,0x0000,0b0010001000100010.1,0b0011001100110011.1,0b1011101110111011.1},
-		fillp_cycle={0x0000,0x0000,0x0000,0b1010000010100000.1,0b1010010110100101.1,0b1011111010111110.1},
-		maxhp=20,
-		hp=20,
-		draw=function(self)
-			fillp(self.fillp)
-			circfill(self.x,self.y,self.collider_r,self.c1)
-			fillp()
-		end,
-		update={bh_tick_hp,bh_cycle_pallete_and_size},
-		on_death={remove_object,remove_if_far}
-	}
+template_trail_particle={
+	parent=template_basic_particle,
+	pallete_cycle={7,6,13},
+	collider_r_cycle={2,2},
+	//fillp_cycle={0x0000,0x0000,0x0000,0b0010001000100010.1,0b0011001100110011.1,0b1011101110111011.1},
+	fillp_cycle={0x0000,0x0000,0x0000,0b1010000010100000.1,0b1010010110100101.1,0b1011111010111110.1},
+	maxhp=20,
+	hp=20,
+	draw=function(self)
+		fillp(self.fillp)
+		circfill(self.x,self.y,self.collider_r,self.c1)
+		fillp()
+	end,
+	update={bh_tick_hp,bh_cycle_pallete_and_size},
+	on_death={remove_object,remove_if_far}
+}
 
 	--[[
 template_trail_particle={
@@ -1973,6 +1973,7 @@ template_enemy_fish=
 		group=list_projectiles,
 		collider_r=3,
 		damage=2,
+		inv_damage=10,
 		hp=80,
 		c1=12,
 		c2=background,
