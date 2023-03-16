@@ -20,72 +20,24 @@ sfx 41 enemy got hit sfx
 
 
 ship={}
+cam={}
 null=function() end
 background=13
 void=1
 outline=1
 freeze_frame=0
+list_animations={}
 
 function _init()
-	start_menu()
-	cam={x=0,y=0}
+	init_menu()
 	cam2={x=0,y=0}
 end
 
-
-
-function start_game_over()
-	_update60=game_over_draw
-	_draw=game_over_update
-	add_animation(function ()
-		for i=0,100 do
-			fi=flr(fadout_amount/fadeout_args.fc)+1
-			for n=1,fadeout_args.pn do
-				pal(n,fades[n][fi],1)
-			end
-			yield()
-			fadout_amount+=0.01
-		end
-		fadout_amount=0
-		fi=flr(fadout_amount/fadeout_args.fc)+1
-		for n=1,fadeout_args.pn do
-			pal(n,fades[n][fi],1)
-		end
-		start_menu()
-	end)
-end
-
-function game_over_draw()
-	cls(background)
-	draw_health_circle()
-	
-	screen_shake()
-	camera(cam.x-64,cam.y-64)
-	draw_stars()
-	draw_all(list_projectiles)
-	draw_all(list_particles)
-	draw_all(list_enemies)
-	
-end
-
-function game_over_update()
-	tt+=1
-	tt=tt%10000
-	update_animations()
-	//upd_ship()
-	update_all_entities()
-end
-
-
-
-
-function start_menu()
-	_update60=menu_update
-	_draw=menu_draw
-	game_starting=false
+function init_menu()
+	_update60=update_menu
+	_draw=draw_menu
 	list_particles={}
 	list_enemies={}
-	list_draw_objects={}
 	list_projectiles={}
 	list_stars={}
 	play_btn_color=7
@@ -99,93 +51,41 @@ function start_menu()
 			self.y=self.x/3+64+5*cos(self.x/300+t()/10)*(1+sin(t()/130))-45
 		end}}
 		,ship_d_o)
-	poke(0x5f2d, 1)
+	//poke(0x5f2d, 1)
 	music(1,100,5)
 	camera()
-	cls(0)
 	tt=0
-	
 end
 
-function menu_draw()
-	cls(2)
-
+function draw_menu()
+	cls(void)
 	draw_all(list_particles)
 	pal(7,play_btn_color)
 	spr(112,10,54,-2+tt/2,3)
 	print("press ❎ to play",30,90,play_btn_color)
 	line(-6+8*tt/2,55,-6+8*tt/2,70,play_btn_color)
-	draw_all(list_draw_objects)
-	//print(stat(0),0,0)
-	//print(stat(1),0,20)
-	//print(stat(2),0,40)
 end
 
-function menu_update()
-	tt+=1
-	tt=tt%10000
+function update_menu()
+	tt=min(tt+1,10000)
 	update_animations()
 	update_all_entities()
-	update_all(list_draw_objects)
-	if tt%4==0 then
-	local snake_inner=8
-	local snake_outer=8
-	if tt<60 then
-		snake_inner=12
-		snake_outer=12
-	end
-	if tt%71==0 or tt%39==0 or tt%38==0then
-		snake_outer=1
-		snake_inner=1
-	end
-	add_object({
-		group=list_particles,
-		x=160,
-		y=64,
-		dx=-4,
-		dy=0,
-		c1=snake_inner,
-		c2=snake_outer,
-		collider_r=min(tt/5,15),
-		draw=drw_debug,
-		update={function (self)
-			self.x-=3
-			self.y=self.x/3+64+5*cos(self.x/300+t()/10)*(1+sin(t()/130))-20
-		end, bh_tick_hp},
-		sd_rate=1,
-		hp=60}, template_basic_particle)
-	end
 	add_object({
 		group=list_particles,
 		x=shp.x,
 		y=shp.y-1,
 		dx=-2,
 		dy=randb(-10,10)/20-0.2,
-		c1=12,
+		c1=8,
 		draw=drw_circle,
 		sd_rate=1,
 		hp=40+randb(0,20)}, template_basic_particle)
-	--[[
-	add_particle(
-				shp.x,
-				shp.y-2,
-				-2,
- 				-0.4+randb(-3,4)/5,
-				50+randb(-3,4),12)
-	shp.y+=sin(0.3+tt/100)*(1.1+sin(0.5+tt/1000))/15
 	
-	add_particle(
-				256,
-				120,
-				-4,
- 				-1+sin(tt/167)/10,
-				min(10+3*tt,400),8)
-				]]
 	if btnp(❎) and not game_starting then
 		game_starting=true
 		add_animation(function ()
 			sfx(37,3)
-			play_btn_color=12
+			play_btn_color=8
 			for i=0,10 do
 				yield()
 			end
@@ -210,19 +110,65 @@ function menu_update()
 				shp.y+=0.6-i/2000
 				yield()
 			end
-			//fx_explode(shp)
-			
-			start_game()
+			init_game()
+			game_starting=false
 		end)
 	end
 end
 
 
 
-function _update60()
-	end
 
-function start_game()
+
+
+function init_game_over()
+	_update60=draw_game_over
+	_draw=update_game_over
+	add_animation(function ()
+		for i=0,100 do
+			fi=flr(fadout_amount/fadeout_args.fc)+1
+			for n=1,fadeout_args.pn do
+				pal(n,fades[n][fi],1)
+			end
+			yield()
+			fadout_amount+=0.01
+		end
+		fadout_amount=0
+		fi=flr(fadout_amount/fadeout_args.fc)+1
+		for n=1,fadeout_args.pn do
+			pal(n,fades[n][fi],1)
+		end
+		init_menu()
+	end)
+end
+
+function draw_game_over()
+	cls(background)
+	draw_health_circle()
+	
+	screen_shake()
+	camera(cam.x-64,cam.y-64)
+	draw_stars()
+	draw_all(list_projectiles)
+	draw_all(list_particles)
+	draw_all(list_enemies)
+	
+end
+
+function update_game_over()
+	tt+=1
+	tt=tt%10000
+	update_animations()
+	//upd_ship()
+	update_all_entities()
+end
+
+
+
+
+
+
+function init_game()
 	music(5,100,5)
 	
 	enemy_volume_max=30
@@ -257,6 +203,7 @@ function start_game()
 						dash_cost=2,
 						laser_cost=0.2,
 						}
+	cam2={x=ship.x,y=ship.y+20}
 	ship.states={
 		turning=0,
  		flying=false,
@@ -273,7 +220,6 @@ function start_game()
 	fly_turning=0.005
 	shoot_turning=0.02
 	laser_turning=0.003
-	cam={x=0,y=0}
 	laser={length=120,segments=9}
 	list_stars={}
 	list_enemies={}
@@ -284,12 +230,12 @@ function start_game()
 	
 	add_stars()
 
-	_update60=game_update
-	_draw=game_draw
+	_update60=update_game
+	_draw=draw_game
 end
 
 	
-function game_update()
+function update_game()
 	cam2.x+=(ship.x-cam2.x)/4
 	cam2.y+=(ship.y-cam2.y)/4
 	if freeze_frame >0 then
@@ -319,28 +265,12 @@ function game_update()
 	end
 	if ship.hp<=0 then
 		sfx(38,3)
-		start_game_over()
+		init_game_over()
 	end
 end
-health_circle_r=100
-function draw_health_circle()
-	local x=1-ship.hp/ship.maxhp
-	local current_r=92*(1-x^1.25)
-	if x==0 then
-		current_r=120
-	end
-	
 
-	if current_r!=health_circle_r then
-	health_circle_r+=flr((current_r-health_circle_r)/2)
-	end
-	
-	circfill(ship.x,ship.y,health_circle_r,background)
-	//print(ceil((1-x)*100),ship.x+20,ship.y,7)
-	//print("%",ship.x+40,ship.y,7)
-end
 
-function game_draw()
+function draw_game()
 	cls(void)
 	draw_health_circle()
 	screen_shake()
@@ -374,17 +304,41 @@ function game_draw()
 	print(ship.states.parry,ship.x+32,ship.y+32)
 	]]--
 	end
+
+	function draw_ui()
+		rectfill(cam.x-65,cam.y+64,cam.x-65+128*(ship.laser_charge)/ship.laser_charge_max,cam.y+60,12)
+	end
+
+
+
+
+
+	health_circle_r=100
+function draw_health_circle()
+	local x=1-ship.hp/ship.maxhp
+	local current_r=92*(1-x^1.25)
+	if x==0 then
+		current_r=120
+	end
+	
+
+	if current_r!=health_circle_r then
+	health_circle_r+=flr((current_r-health_circle_r)/2)
+	end
+	
+	circfill(ship.x,ship.y,health_circle_r,background)
+	//print(ceil((1-x)*100),ship.x+20,ship.y,7)
+	//print("%",ship.x+40,ship.y,7)
+end
+
+
 -->8
 //ship update and input
 //laser
 
 
 
-function draw_ui()
-	if(ship.laser_charge>0)then
-	rectfill(cam.x-64,cam.y+64,cam.x-64+128*(ship.laser_charge)/ship.laser_charge_max,cam.y+60,12)
-	end
-end
+
 
 
 function upd_ship()
@@ -485,7 +439,7 @@ function upd_ship()
 	local cac =cos(curvel)
 	local cas =sin(curvel)
 
-	if pifagor(ship.dx,ship.dy)>ship.maxspeed 
+	if ship.speed>ship.maxspeed 
 		then
 		ship.dx=ship.maxspeed*cac*0.97
 		ship.dy=ship.maxspeed*cas*0.97
@@ -517,7 +471,7 @@ function draw_ship()
 	end
 
 	if ship.states.laser then 
-		draw_laser(ship.nosex,ship.nosey,ship.angle,laser.length,false)
+		draw_laser(ship.nosex,ship.nosey,ship.angle,laser.length)
 		rspr(2,ship.x,
 									ship.y,
 									ship.angle,
@@ -532,11 +486,6 @@ function draw_ship()
 									1,
 									ship.scale)
 	end
-	
-	
-				
-
-	//print(#list_particles,ship.x,ship.y+15)
 end
 
 function handle_input()
@@ -603,48 +552,38 @@ end
 //laser
 
 
-
-
-
-
 function fire_laser(x1,y1,a,l,l1)
-	local ca=cos(a) 
-	local sa=sin(a)
-	local x2=x1+l*ca
-	local y2=y1+l*sa
-	local hx=(x2-x1)/l1
-	local hy=(y2-y1)/l1
+	local ca,sa=cos(a),sin(a)
+	local hx,hy=(x1+l*ca-x1)/l1,(y1+l*sa-y1)/l1
 	for i=0,l1 do
-		
-		local a={}
-		a.x=x1+hx*i
-		a.y=y1+hy*i
-		a.collider_r=5
-		a.damage=3
-		a.inv_damage=5
-		a.c=7
-		a.on_hit={}
-		a.on_death={}
-		a.invincible=0
-		
+		local a={x=x1+hx*i,
+				y=y1+hy*i,
+				collider_r=5,
+				damage=3,
+				inv_damage=5,
+				c=7,
+				on_hit={},
+				on_death={},
+				invincible=0}
 		add_friend_projectile_collider(a)
 	end	
 end
 
-
-
-
-function draw_laser(x,y,a,l,part)
-	ca=cos(a) sa=sin(a)
-	x1=x+l*ca
-	y1=y+l*sa
+function draw_laser(x,y,a,l)
+	local ca,sa=cos(a),sin(a)
+	local x1,y1=x+l*ca,y+l*sa
 	//line(x,y,x1,y1,1)
-	decay_line(x,y,x1,y1,80,4,2,12,false)
-	decay_line(x,y,x1,y1,80,3,1,10,part)
-	decay_line(x,y,x1,y1,80,2,2,7,false)		
+	decay_line(x,y,x1,y1,80,4,2,12)
+	decay_line(x,y,x1,y1,80,3,1,10)
+	decay_line(x,y,x1,y1,80,2,2,7)		
 end
 
-
+function decay_line(x1,y1,x2,y2,l,d1,d2,c)
+	local hx,hy,hd=(x2-x1)/l,(y2-y1)/l,(d2-d1)/l
+	for i=0,l do
+		circfill(x1+hx*i+randb(-3,2),y1+hy*i+randb(-3,2),d1+hd*i,c)
+	end
+end
 
 
 
@@ -1128,8 +1067,7 @@ end
 
 
 
-list_animations={}
-list_draw_objects={}
+
 
 
 function add_object(args,template)
@@ -1190,12 +1128,10 @@ end
 //can be invincible
 //can die
 function bh_remove_if_far_away(self,distance)
-	local d=300
-	if distance then
-		d=distance
-	end
-	if(self.remove_if_far) then
-		if abs(pifagor(self.x-ship.x,self.y-ship.y))>d
+	local d = 300 or distance
+
+	if (self.remove_if_far) then
+		if get_distance(self,ship)>d
 		then
 			remove_object(self)
 			return false
@@ -1209,7 +1145,7 @@ end
 
 function bh_update_dead_snake(self)
 	local death_period=8
-	if(tt%death_period==0)then
+	if ( tt%death_period==0)then
 		fx_explode_snake(self.segments[1],8)//red explosion
 		if(rnd(10)>7)then od_drop_pellets(self.segments[1])end
 		del(self.segments,self.segments[1])
@@ -1260,7 +1196,7 @@ function bh_update_snake(self)
 		//self.segments[2].collider_r=self.snake_width*0.8
 	end
 
-	local dist=pifagor(-self.x+ship.x,-self.y+ship.y)
+	local dist=get_distance(self,ship)
 	//self.speed=2.5-2*3^(-dist/30)
 	if(dist>=100) then 
 		
@@ -1347,14 +1283,10 @@ function bh_fly_towards_ship(a)
 end
 
 function bh_snake_towards_ship(self)
-
-
-	td=self.turning_d
-
-	local as=sin(self.angle)
-	local ac=cos(self.angle)
+	local td=self.turning_d or 0.003
+	local as,ac=sin(self.angle),cos(self.angle)
 	local ff=(-self.x+ship.x)*as-(-self.y+ship.y)*ac
-	if(ff>0) then
+	if (ff>0) then
 			self.angle+=td
 		else
 			self.angle-=td
@@ -1365,10 +1297,7 @@ function bh_snake_towards_ship(self)
 end
 
 function bh_face_towards_ship(self)
-	local td=0.003
-	if self.turning_d then
-		td=self.turning_d
-	end
+	local td=self.turning_d or 0.003
 	local as=sin(self.angle)
 	local ac=cos(self.angle)
 	local ff=(-self.x+ship.x)*as-(-self.y+ship.y)*ac
@@ -1390,19 +1319,16 @@ function bh_update_pellet(self)
 	
 	if not btn(❎) then
 		local a=atan2(-self.x+ship.x,-self.y+ship.y)
-		local dist=pifagor(-self.x+ship.x,-self.y+ship.y)
+		local dist=get_distance(self,ship)
 		local as=sin(a)
 		local ac=cos(a)
 		self.dx=ac*self.speed*30*3^(-dist/100)
 		self.dy=as*self.speed*30*3^(-dist/100)
 	end
-
-	
 end
 
 function bh_shoot_at_player(self)
-	offset=randb(0,100)/100
-	ang=atan2(-self.x+ship.x,
+	local ang=atan2(-self.x+ship.x,
 		-self.y+ship.y)
 	if (tt+ceil(self.y))%100==0 or (tt+ceil(self.y)+20)%100==0 or (tt+ceil(self.y)+40)%100==0   then //
 	for i=0,0 do
@@ -1495,15 +1421,10 @@ function drw_snake(self)
 		for i=2,#self.segments do
 			circfill(self.segments[i].x,self.segments[i].y,self.segments[i].collider_r+2,border_color)
 		end
-		
 		for i=2,#self.segments do
 			circfill(self.segments[i].x,self.segments[i].y,self.segments[i].collider_r,self.segments[i].c1)
 		end
-		//for i=2,#self.segments do
-		//	line(self.segments[i-1].x,self.segments[i-1].y,self.segments[i].x,self.segments[i].y,7)
-		//end
 
-	
 		pal(1,self.c1)
 		pal(12,self.c2)
 		rspr(7,	self.x,self.y,self.angle,0,1)
@@ -1556,7 +1477,7 @@ function drw_spr(self)
 	//circ(self.x,self.y,self.collider_r,7)
 	//pset(self.x,self.y,0)
 	end
-
+--[[
 function drw_text(self)
 	print(self.text,self.x,self.y,self.c1)
 end
@@ -1569,7 +1490,7 @@ function drw_square(self)
 		self.y-self.hp/30,
 		self.c1)
 	end
-
+]]
 function fx_explode_snake(a,c)
 	shake_explode(0.07)
 	if(cr_is_on_screen(a))then
@@ -1587,6 +1508,7 @@ function fx_explode_snake(a,c)
 		end
 	end
 end
+
 fades={
 	{1,1,1,1,0,0,0,0},
 	{2,2,2,1,1,0,0,0},
@@ -1602,10 +1524,29 @@ fades={
 	{12,12,13,5,5,2,1,0},
 	{13,13,5,5,2,1,1,0},
 	{14,9,9,4,5,2,1,0},
-	{15,14,9,4,5,2,1,0}}
+	{15,14,9,4,5,2,1,0}}	--сто токенов
+	--[[
+	fades={
+		split"1,1,1,1,0,0,0,0",
+		split"2,2,2,1,1,0,0,0",
+		split"3,3,4,5,2,1,1,0",
+		split"4,4,2,2,1,1,1,0",
+		split"5,5,2,2,1,1,1,0",
+		split"6,6,13,5,2,1,1,0",
+		split"7,7,6,13,5,2,1,0",
+		split"8,8,9,4,5,2,1,0",
+		split"9,9,4,5,2,1,1,0",
+		split"10,15,9,4,5,2,1,0",
+		split"11,11,3,4,5,2,1,0",
+		split"12,12,13,5,5,2,1,0",
+		split"13,13,5,5,2,1,1,0",
+		split"14,9,9,4,5,2,1,0",
+		split"15,14,9,4,5,2,1,0"}
+		]]
 fadout_amount=0
 fadeout_args={fn=8,pn=15}
 fadeout_args.fc=1/fadeout_args.fn
+--[[
 function fadeout(frames)
 	local fi=flr(fadout_amount/fadeout_args.fc)+1
 	for i=0,frames do
@@ -1617,6 +1558,7 @@ function fadeout(frames)
 		  yield();
 	end
 end
+]]
 	
 function fx_explode(a)
 	shake_explode(0.1)
@@ -1682,7 +1624,7 @@ end
 function op_deflect1(self,other)
 	local ac=cos(self.angle)
 	local as=sin(self.angle)
-	local len=pifagor(other.x-self.x,other.y-self.y)
+	local len=get_distance(self,other)
 	local ff=(other.x-self.x)/len*ac+(other.y-self.y)/len*as
 	if (ff>0)then
 		self.c1=9
@@ -1736,9 +1678,7 @@ function od_drop_pellets(self)
 			end
 end
 
-function od_raise_laser_charge(self)
-	ship.laser_charge+=self.laser_charge
-end
+
 
 template_empty={
 	pallete_cycle={0},
@@ -2082,7 +2022,7 @@ ship_d_o={
 //randb
 
 function rspr(sp,x,y,a,t,scale)
-	ca=cos(-a+0.25) sa=sin(-a+0.25)
+	local ca,sa=cos(-a+0.25),sin(-a+0.25)
 	local sp_x=sp%16*8
 	local sp_y=flr(sp/16)*8
 	local pix=0
@@ -2141,23 +2081,23 @@ function screen_shake()
 end
 
 function collide_p(b1,b2)
-	return abs(abs(square(b1.x-b2.x))+
-				abs(square(b1.y-b2.y)))
-				<abs(square(b1.collider_r))
+	return get_distance(b1,b2)<abs(b1.collider_r)
 end
 
 function collide(b1,b2)
-	return abs(abs(square(b1.x-b2.x))+
-				abs(square(b1.y-b2.y)))
-				<abs(square(b1.collider_r+b2.collider_r))
+	return get_distance(b1,b2)<abs(b1.collider_r+b2.collider_r)
 end
 
 function square(a)
-return a*a
+	return a*a
 end
 
 function pifagor(x,y)
-	return sqrt(x*x+y*y)
+	return sqrt(abs(x*x)+abs(y*y))
+end
+
+function get_distance(obj1,obj2)
+	return pifagor(obj1.x-obj2.x,obj1.y-obj2.y)
 end
 
 function randb(l,h) --exclusive
@@ -2166,14 +2106,7 @@ end//rspr, screenshake
 //collide, square, pifagor
 //randb
 
-function decay_line(x1,y1,x2,y2,l,d1,d2,c,part)
-	hx=(x2-x1)/l
-	hy=(y2-y1)/l
-	hd=(d2-d1)/l
-	for i=0,l do
-		circfill(x1+hx*i+randb(-3,2),y1+hy*i+randb(-3,2),d1+hd*i,c)
-	end
-end
+
 
 
 
