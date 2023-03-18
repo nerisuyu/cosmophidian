@@ -40,6 +40,7 @@ function init_menu()
 	list_enemies={}
 	list_projectiles={}
 	list_stars={}
+	list_animations={}
 	play_btn_color=7
 	shp=add_object({x=48,
 		y=32,
@@ -63,12 +64,15 @@ function draw_menu()
 	pal(7,play_btn_color)
 	spr(112,10,54,-2+tt/2,3)
 	print("press ❎ to play",30,90,play_btn_color)
+	print("bitch-ass edition",51,71+sin(tt/200)*1.9,12)
+	print("bitch-ass edition",50,71-sin(tt/200)*1.9,8)
+	
 	line(-6+8*tt/2,55,-6+8*tt/2,70,play_btn_color)
 end
 
 function update_menu()
 	tt=min(tt+1,10000)
-	update_animations()
+	
 	update_all_entities()
 	add_object({
 		group=list_particles,
@@ -95,7 +99,8 @@ function update_menu()
 			end
 			end)
 		add_animation(function ()
-			for i=0,20 do
+			
+			for i=0,10 do
 				shp.x-=i/100
 				shp.y-=i/500
 				yield()
@@ -105,7 +110,7 @@ function update_menu()
 				shp.y-=0.2
 				yield()
 			end
-			for i=0,80 do
+			for i=0,10 do
 				shp.x+=1+i/10
 				shp.y+=0.6-i/2000
 				yield()
@@ -114,6 +119,7 @@ function update_menu()
 			game_starting=false
 		end)
 	end
+	update_animations()
 end
 
 
@@ -122,6 +128,7 @@ end
 
 
 function init_game_over()
+	
 	_update60=draw_game_over
 	_draw=update_game_over
 	add_animation(function ()
@@ -152,6 +159,8 @@ function draw_game_over()
 	draw_all(list_projectiles)
 	draw_all(list_particles)
 	draw_all(list_enemies)
+	print("time:",cam.x-64,cam.y-64)
+	print(tt/60.0,cam.x-40,cam.y-64)
 	
 end
 
@@ -170,7 +179,12 @@ end
 
 function init_game()
 	music(5,100,5)
-	
+	list_stars={}
+	list_enemies={}
+	list_particles={}
+	list_projectiles={}
+	list_animations={}
+	clear_collisions()
 	enemy_volume_max=30
 	despawn_distance=180
 	ship={x=64,y=64,dx=0,dy=0,
@@ -221,11 +235,7 @@ function init_game()
 	shoot_turning=0.02
 	laser_turning=0.003
 	laser={length=120,segments=9}
-	list_stars={}
-	list_enemies={}
-	list_particles={}
-	list_projectiles={}
-
+	
 
 	
 	add_stars()
@@ -272,6 +282,7 @@ end
 
 function draw_game()
 	cls(void)
+	
 	draw_health_circle()
 	screen_shake()
 	camera(cam.x-64,cam.y-64)
@@ -289,10 +300,12 @@ function draw_game()
 
 	draw_ship()
 	draw_ui()
+	print(#list_particles,cam.x-40,cam.y-64)
+	print(#list_enemies,cam.x-40,cam.y-58)
 	--[[
 	
-	print("difficulty:",cam.x-64,cam.y-64)
-	print(enemy_volume_max,cam.x-20,cam.y-64)
+	
+	
 	print(get_available_enemy_volume(list_enemies),cam.x-64,cam.y-54)
 	]]
 	--[[
@@ -861,6 +874,10 @@ end
 ]]
 -->8
 
+
+
+
+
 function get_available_enemy_volume(list)
 	local enemy_volume_current=0
 	for e in all(list) do
@@ -879,7 +896,7 @@ function manage_enemy_spawning()
 			prev_ship_position = current_position
 		end
 		
-	if(tt%100==0) then
+	if tt>180 and tt%150==0 then
 		
 	cram_enemy({group=list_enemies,
 		volume=20,
@@ -904,9 +921,10 @@ function manage_enemy_spawning()
 			update={bh_face_towards_ship,bh_shoot_at_player, bh_hitbox}},
 		template_enemy)
 	
+	
 	cram_enemy({group=list_enemies,
 			volume_added=2,
-			volume=7},
+			volume=3},
 		template_enemy_fish)
 		
 	end
@@ -957,21 +975,23 @@ end
 //stars, particles and projectiles
 function add_stars()
 	for i=0,0 do
-		local star={}
-		star.x=randb(0,256)
-		star.y=randb(0,256)
-		star.d=randb(50,70)/100
-		star.c=13
-		star.move=randb(1,3)
+		local star={
+		x=randb(0,256),
+		y=randb(0,256),
+		d=randb(50,70)/100,
+		c=13,
+		move=randb(1,3)
+		}
 		add(list_stars,star)
 		end
 	for i=0,30 do
-		local star={}
-		star.x=randb(0,256)
-		star.y=randb(0,256)
-		star.d=randb(5,20)/100
-		star.c=void
-		star.move=randb(1,3)
+		local star={
+		x=randb(0,256),
+		y=randb(0,256),
+		d=randb(5,20)/100,
+		c=void,
+		move=randb(1,3)
+	}
 		add(list_stars,star)
 		end
 	
@@ -987,7 +1007,6 @@ function draw_stars()
 		if x<cam.x-128 then i.x+=256 end
 		if y>cam.y+128 then i.y-=256 end
 		if y<cam.y-128 then i.y+=256 end
-		pset(flr(x*2)/2,flr(y),i.c)
 		circfill(flr(x*2)/2,flr(y*2)/2,0.5/i.d,i.c)
 	end
 end
@@ -1044,6 +1063,9 @@ function update_all_entities()
 	end
 	for a in all(list_particles) do
 		update_entity(a)
+		if not cr_is_on_screen then
+		del(list_particles,a)
+		end
 	end
 end
 
@@ -1129,7 +1151,6 @@ end
 //can die
 function bh_remove_if_far_away(self,distance)
 	local d = 300 or distance
-
 	if (self.remove_if_far) then
 		if get_distance(self,ship)>d
 		then
@@ -1141,11 +1162,37 @@ function bh_remove_if_far_away(self,distance)
 end
 
 
+function bh_hitbox(self)
+	if self.group==list_enemies then
+		add_enemy_collider(self)
+		add_enemy_projectile_collider(self)
+	else
+		if self.friendly==true then
+			add_friend_projectile_collider(self)
+		else
+			add_enemy_projectile_collider(self)
+		end
+	end
+end
 
+function bh_tick_hp(self)
+	self.hp-=1
+end
+
+function bh_slow_down(self)
+	local rate =self.sd_rate or 0.95 
+	self.dx*=self.sd_rate
+	self.dy*=self.sd_rate
+	if abs(self.dx)<0.05 then
+		self.dx=0
+	end
+	if abs(self.dy)<0.05 then
+		self.dy=0
+	end
+end
 
 function bh_update_dead_snake(self)
-	local death_period=8
-	if ( tt%death_period==0)then
+	if (tt%8==0)then
 		fx_explode_snake(self.segments[1],8)//red explosion
 		if(rnd(10)>7)then od_drop_pellets(self.segments[1])end
 		del(self.segments,self.segments[1])
@@ -1167,6 +1214,7 @@ function bh_update_snake(self)
 				seed=randb(-100,100),
 				on_hit={ff,oh_knockback_other},
 				x=self.x,
+				y=self.y+10+i*10,
 				angle=0,
 				hp_pellets=1,
 				laser_pellets=0,
@@ -1174,7 +1222,7 @@ function bh_update_snake(self)
 				damage=4,
 				inv_damage=20,
 				is_parriable=false,
-				y=self.y+10+i*10,
+				
 				dx=0,
 				invincible=0,
 				dy=0,
@@ -1197,14 +1245,12 @@ function bh_update_snake(self)
 	end
 
 	local dist=get_distance(self,ship)
-	//self.speed=2.5-2*3^(-dist/30)
 	if(dist>=100) then 
-		
 		self.speed=ship.maxspeed*2
 		self.turning_d=0.01
 	else
-	self.speed=self.maxspeed
-	self.turning_d=0.003
+		self.speed=self.maxspeed
+		self.turning_d=0.003
 	end
 
 	local period=4
@@ -1232,104 +1278,48 @@ function bh_update_snake(self)
 	end
 end
 
-function bh_hitbox(self)
-	if self.group==list_enemies then
-		add_enemy_collider(self)
-		add_enemy_projectile_collider(self)
-	else
-		if self.friendly==true then
-			add_friend_projectile_collider(self)
-		else
-			add_enemy_projectile_collider(self)
-		end
-	end
-end
-
-function bh_tick_hp(self)
-	self.hp-=1
-end
-
-function bh_slow_down(self)
-	local rate=0.95
-	if self.sd_rate then
-		rate=self.sd_rate
-	end
-	self.dx*=self.sd_rate
-	self.dy*=self.sd_rate
-	if abs(self.dx)<0.05 then
-		self.dx=0
-	end
-	if abs(self.dy)<0.05 then
-		self.dy=0
-	end
-end
-
-function bh_fish_towards_ship(a)
-	a.a=atan2(-a.x+ship.x,-a.y+ship.y)+sin(a.seed/60+tt/150)/5
-	local as=sin(a.a)
-	local ac=cos(a.a)
-	a.angle=atan2(ac,as)
-	a.x+=ac*a.speed
-	a.y+=as*a.speed
-end
-
-function bh_fly_towards_ship(a)
-	a.a=atan2(-a.x+ship.x,-a.y+ship.y)
-	local as=sin(a.a)
-	local ac=cos(a.a)
-	a.angle=atan2(ac,as)
-	a.x+=ac*a.speed
-	a.y+=as*a.speed
-end
-
-function bh_snake_towards_ship(self)
+function bh_face_towards_ship(self)
 	local td=self.turning_d or 0.003
 	local as,ac=sin(self.angle),cos(self.angle)
 	local ff=(-self.x+ship.x)*as-(-self.y+ship.y)*ac
-	if (ff>0) then
+	if ff>0 then
 			self.angle+=td
 		else
 			self.angle-=td
 		end
-	local angle=self.angle+sin(self.seed/100+tt/150)/10
-	self.x+=cos(angle)*self.speed
-	self.y+=sin(angle)*self.speed
 end
 
-function bh_face_towards_ship(self)
-	local td=self.turning_d or 0.003
-	local as=sin(self.angle)
-	local ac=cos(self.angle)
-	local ff=(-self.x+ship.x)*as-(-self.y+ship.y)*ac
-	if(ff>0) then
-			self.angle+=0.003
-		else
-			self.angle-=0.003
-		end
-	local angle=self.angle+sin(self.seed/100+tt/150)/10
+
+function bh_fly_straight(self)
+	local angle=self.angle1 or self.angle
+	self.x+=self.dx+cos(angle)*self.speed
+	self.y+=self.dy+sin(angle)*self.speed
 end
 
-function bh_fly_straight(a)
-	a.x+=a.dx+cos(a.angle)*a.speed
-	a.y+=a.dy+sin(a.angle)*a.speed
+function bh_fish_towards_ship(self)
+	bh_face_towards_ship(self)
+	self.angle1=self.angle+sin(self.seed/60+tt/150)/5
+	bh_fly_straight(self)
+end
+
+function bh_snake_towards_ship(self)
+	bh_face_towards_ship(self)
+	self.angle1=self.angle+sin(self.seed/100+tt/150)/10
+	bh_fly_straight(self)
 end
 
 function bh_update_pellet(self)
 	add_enemy_projectile_collider(self)
-	
 	if not btn(❎) then
-		local a=atan2(-self.x+ship.x,-self.y+ship.y)
-		local dist=get_distance(self,ship)
-		local as=sin(a)
-		local ac=cos(a)
+		local a,dist=get_angle(self,ship),get_distance(self,ship)
+		local as,ac=sin(a),cos(a)
 		self.dx=ac*self.speed*30*3^(-dist/100)
 		self.dy=as*self.speed*30*3^(-dist/100)
 	end
 end
 
 function bh_shoot_at_player(self)
-	local ang=atan2(-self.x+ship.x,
-		-self.y+ship.y)
+	local ang=get_angle(self,ship)
 	if (tt+ceil(self.y))%100==0 or (tt+ceil(self.y)+20)%100==0 or (tt+ceil(self.y)+40)%100==0   then //
 	for i=0,0 do
 		sfx(39,3)
@@ -1380,16 +1370,16 @@ function oh_if_ship_then_die(self,other)
 		del(self.group,self)
 		fx_explode(self)
 	end
-
 end
 
 function oh_knockback_other(self,other)
-	local ang=atan2(-self.x+other.x,-self.y+other.y)
+	local ang=get_angle(self,other)
 	other.dx=cos(ang)*2
 	other.dy=sin(ang)*2
 end
+
 function oh_knockback_self(self,other)
-	local ang=atan2(-self.x+other.x,-self.y+other.y)
+	local ang=get_angle(self,other)
 	self.dx=-cos(ang)*3
 	self.dy=-sin(ang)*3
 end
@@ -1434,15 +1424,12 @@ function drw_snake(self)
 end
 
 function drw_debug(self)
-	//print(self.damage,self.x,self.y+10)
 	circfill(self.x,self.y,
 						self.collider_r+1,
 						self.c2)
 	circfill(self.x,self.y,
 						self.collider_r-1,
 						self.c1)
-	//print(self.hp,self.x+10,
-	//					self.y,0)
 	if self.invincible and 
 				self.invincible>0 then
 				fillp(0b0011011011001001.1)
@@ -1459,8 +1446,10 @@ function drw_circle(self)
 	end
 
 function drw_rsprite(self)
-	rspr(self.spr,self.x,self.y,self.angle,self.c2,self.scale)
-	//print(self.hp,self.x,self.y+20)
+	if(cr_is_on_screen(self)) do
+		rspr(self.spr,self.x,self.y,self.angle,self.c2,self.scale)
+	end
+		//print(self.hp,self.x,self.y+20)
 	end
 function drw_enemy_rsprite(self)
 	circfill(self.x,self.y,self.collider_r+1,outline)
@@ -1524,7 +1513,7 @@ fades={
 	{12,12,13,5,5,2,1,0},
 	{13,13,5,5,2,1,1,0},
 	{14,9,9,4,5,2,1,0},
-	{15,14,9,4,5,2,1,0}}	--сто токенов
+	{15,14,9,4,5,2,1,0}}	--100 tokens
 	--[[
 	fades={
 		split"1,1,1,1,0,0,0,0",
@@ -1636,7 +1625,6 @@ function op_deflect1(self,other)
 	self.hp+=80
 	self.c1=7
 	self.damage+=20
-	add_object({group=list_particles,x=self.x,y=self.y,text=ff},template_text)
 end
 
 function op_deflect_bullet(self,other)
@@ -1665,7 +1653,7 @@ function od_drop_pellets(self)
 			y=self.y,
 			dx=self.dx+randb(-4,5)/4,
 			dy=self.dy+randb(-4,5)/4},
-			template_pellet_hp)
+			template_pellet)
 		end
 
 		for i=1,self.laser_pellets do
@@ -1678,13 +1666,61 @@ function od_drop_pellets(self)
 			end
 end
 
+function shoot_missile(self,other)
+	local new_missile=add_object({group=list_projectiles,
+		x=self.x,
+		y=self.y,
+		c1=self.c1},
+		template_missile)
+	
+	local lifespan=new_missile.hp 
+	local p0_x,p0_y = self.x, self.y
+	local p3_x,p3_y,p2_x,p2_y = other.x+other.dx*lifespan, other.y+other.dy*lifespan,p0_x+randb(-50,50), p0_y+randb(-50,50)
+	local p1_x,p1_y = (p0_x+p2_x)/2+randb(-50,50), (p0_y+p2_y)/2+randb(-50,50)
+	add_object({group=list_particles,
+		x=p3.x,
+		y=p3.y,
+		collider_r=8,
+		collider_r_cycle={8,8,7,6,4,1},
+		pallete_cycle={10,9,8},
+		hp=template_missile.hp,
+		maxhp=template_missile.hp,
+		update={bh_tick_hp,bh_cycle_pallete_and_size},
+		draw=function(self)
+			circ(self.x,self.y,self.collider_r,self.c1) 
+		end,
+	},template_basic_particle)
+	add_animation(function ()
+		for i=1,lifespan+1 do
+			local t=(i/lifespan)^1.2
+			new_missile.x=((1-t)^3)*p0_x+3*((1-t)^2)*t*p1_x+3*(1-t)*(t^2)*p2_x+(t^3)*p3_x
+			new_missile.y=((1-t)^3)*p0_y+3*((1-t)^2)*t*p1_y+3*(1-t)*(t^2)*p2_y+(t^3)*p3_y
+			yield();
+			end
+		local expl=add_object({group=list_particles,
+			hp=5,
+			x=p3.x,
+			y=p3.y},
+		template_explosion)
+	end)
+end
+
+function bh_leave_trail(self)
+	if(cr_is_on_screen(self)) do 
+		add_object({group=list_particles,
+			x=self.x,
+			y=self.y},
+			template_trail_particle)
+	end
+end
+
 
 
 template_empty={
 	pallete_cycle={0},
 	collider_r_cycle={10},
-	fillp_cycle={0x0000},
-	fillp=0x0000,
+	fillp_cycle={0},
+	fillp=0,
 	x=0,
 	y=0,
 	dx=0,
@@ -1709,7 +1745,7 @@ template_empty={
 	laser_pellets=0,
 	hp_pellets=0,
 	damage=0,
-	inv_damage=0,
+	inv_damage=10,
 	is_parriable=false,
 	friendly=false,
     draw=drw_debug,
@@ -1722,119 +1758,80 @@ template_empty={
 template_basic_particle={
 	parent=template_empty,
 	c1=7,
-	sd_rate=0.95,
+	sd_rate=0.5,
 	update={bh_fly_straight,bh_tick_hp,bh_slow_down},
     draw=drw_circle,
 	on_death={remove_object}
 }
 
-function noise(x)
-	return sin (2 * x) + sin(3.14 * x)
-end
-
-function shoot_missile(self,other)
-	local new_missile=add_object({group=list_projectiles,
-		x=self.x,
-		y=self.y,
-		c1=self.c1},
-		template_missile)
-	
-	local lifespan=new_missile.hp 
-	local p0 = table_clone(self)
-	local p3 = {x=other.x+other.dx*lifespan,y=other.y+other.dy*lifespan}
-	local p2=  {x=p0.x+randb(-50,50),y=p0.y+randb(-50,50)}
-	local p1 = {x=(p0.x+p2.x)/2+randb(-50,50),y=(p0.y+p2.y)/2+randb(-50,50)}
-	
+template_explosion={
+	parent=template_basic_particle,
+	damage=10,
+	collider_r=7,
+	c1=7,
+	draw=drw_debug,
+	update={function(self)
+		add_enemy_projectile_collider(self)
+		bh_tick_hp(self)
+	end}
+}
 
 
-
-	add_object({group=list_particles,
-		x=p3.x,
-		y=p3.y,
-		collider_r=8,
-		collider_r_cycle={8,8,7,6,4,1},
-		pallete_cycle={10,9,8},
-		c1=background,
-		c2=10,
-		hp=template_missile.hp,
-		maxhp=template_missile.hp,
-		spr=14,
-		update={bh_tick_hp,bh_cycle_pallete_and_size},
-		draw=function(self)
-			fillp(self.fillp)
-			circ(self.x,self.y,self.collider_r,self.c1)
-			fillp()  
-		end,
-	},template_basic_particle)
-
-	
-
-	add_animation(function ()
-		for i=1,lifespan+1 do
-		local t=(i/lifespan)^1.2
-
-		new_missile.x= ((1-t)^3)*p0.x+3*((1-t)^2)*t*p1.x+3*(1-t)*(t^2)*p2.x+(t^3)*p3.x
-		new_missile.y= ((1-t)^3)*p0.y+3*((1-t)^2)*t*p1.y+3*(1-t)*(t^2)*p2.y+(t^3)*p3.y
-
-		//new_missile.x=(1-t)*((1-t)*p0.x+t*p1.x)+t*((1-t)*p1.x+t*p2.x)
-		//new_missile.y=(1-t)*((1-t)*p0.y+t*p1.y)+t*((1-t)*p1.y+t*p2.y)
-		yield();
-		end
-		local expl=add_object({group=list_particles,
-			x=p3.x,
-			y=p3.y},
-		template_explosion)
-		
-		for i=1,5 do
-		yield();
-		end
-		expl.hp=0
-	end)
-end
-function bh_leave_trail(self)
-	add_object({group=list_particles,
-			x=self.x,
-			y=self.y},
-			template_trail_particle)
-end
 
 template_missile={
 	parent=template_basic_particle,
 	hp=70,
 	collider_r=2,
 	update={bh_tick_hp,bh_leave_trail},
-	on_death={remove_object,fx_explode,fx_explode,fx_explode},
 	draw=drw_debug
 }
 
+template_trail_particle={
+	parent=template_basic_particle,
+	pallete_cycle={7,6,13},
+	collider_r_cycle={2,2},
+	fillp_cycle={0,0,0,0b0010001000100010.1,0b0011001100110011.1,0b1011101110111011.1},
+	//fillp_cycle={0,0,0,0b1010000010100000.1,0b1010010110100101.1,0b1011111010111110.1},
+	maxhp=20,
+	hp=20,
+	draw=function(self)
+		if self.fillp!= 0 then
+			fillp(self.fillp)
+			circfill(self.x,self.y,self.collider_r,self.c1)
+			fillp()
+		else
+			circfill(self.x,self.y,self.collider_r,self.c1)
+		end
+	end,
+	update={bh_tick_hp,bh_cycle_pallete_and_size},
+	on_death={remove_object,remove_if_far}
+}
 
 template_pellet={
 	parent=template_basic_particle,
+	pals={{2,background}},
+	c1=9,
+	damage=-3,
 	sd_rate=0.98,
 	c2=7,
 	hp=500,
 	speed=0.1,
 	collider_r=10,
 	spr=13,
+	inv_damage=0,
 	draw=drw_spr,
-	on_hit={remove_object},
+	on_hit={function ()sfx(35,3)end,remove_object},
 	is_pickup=true,
 	friendly=false,
 	update={bh_fly_straight,bh_tick_hp,bh_slow_down,bh_update_pellet},
 }
 
-template_pellet_hp={
-	parent=template_pellet,
-	pals={{2,background}},
-	damage=-3,
-	c1=9,
-	on_hit={function ()sfx(35,3)end,remove_object}
-}
 
 template_pellet_laser={
 	parent=template_pellet,
 	pals={{9,12},{2,background}},
 	c1=12,
+	damage=0,
 	on_hit={function ()sfx(35,3)end,remove_object,function(self)  ship.laser_charge+=3 end}
 }
 
@@ -1874,48 +1871,9 @@ template_enemy={
 	on_parry={}
 	}
 
-template_explosion={
-	parent=template_enemy,
-	is_parriable=false,
-	damage=10,
-	collider_r=7,
-	c1=7,
-	hp=100,
-	draw=drw_debug,
-	update={bh_hitbox},
-	on_death={remove_object,remove_if_far,fx_dissolve}
-	}
 
-template_trail_particle={
-	parent=template_basic_particle,
-	pallete_cycle={7,6,13},
-	collider_r_cycle={2,2},
-	//fillp_cycle={0x0000,0x0000,0x0000,0b0010001000100010.1,0b0011001100110011.1,0b1011101110111011.1},
-	fillp_cycle={0x0000,0x0000,0x0000,0b1010000010100000.1,0b1010010110100101.1,0b1011111010111110.1},
-	maxhp=20,
-	hp=20,
-	draw=function(self)
-		fillp(self.fillp)
-		circfill(self.x,self.y,self.collider_r,self.c1)
-		fillp()
-	end,
-	update={bh_tick_hp,bh_cycle_pallete_and_size},
-	on_death={remove_object,remove_if_far}
-}
 
-	--[[
-template_trail_particle={
-	parent=template_basic_particle,
-	pallete_cycle={7,7,10,1,1,1,1,1},
-	collider_r_cycle={0,3,2,2,1},
-	maxhp=20,
-	hp=20,
-	draw=function(self)
-		circfill(self.x,self.y,self.collider_r,self.c1)
-	end,
-	update={bh_tick_hp,bh_cycle_pallete_and_size},
-	on_death={remove_object,remove_if_far}
-}]]
+
 
 
 template_snake={
@@ -1956,7 +1914,7 @@ template_enemy_fish=
 		spr=3,
 		speed=1.2,
 		collider_r=3,
-		turning_d=0.5,
+		turning_d=0.05,
 		scale=0.3,
 		damage=3,
 		volume=1,
@@ -1978,12 +1936,11 @@ template_enemy_fish=
 		c1=12,
 		c2=background,
 		speed=3,
-		
 		is_parriable=true,
 		draw=drw_debug,
 		update={bh_fly_straight,bh_hitbox,bh_tick_hp},
 		on_hit={remove_object},
-		on_death={fx_explode,remove_object},
+		on_death={remove_object},
 		on_parry={op_deflect_bullet,function ()sfx(34,3)end,fx_ff,fx_ff}
 		}		
 
@@ -1991,16 +1948,10 @@ template_bullet_ship={
 	parent=template_bullet,
 	collider_r=3,
 	damage=4,
-	hp=80,
 	c1=8,
 	c2=outline,
-	speed=3,
 	is_parriable=false,
 	friendly=true,
-	draw=drw_debug,
-	update={bh_fly_straight,bh_hitbox,bh_tick_hp},
-    on_hit={remove_object},
-	on_death={fx_dissolve,remove_object},
 	on_parry={}
 	}
 	
@@ -2014,7 +1965,13 @@ ship_d_o={
 	end
 		}
 
+stage1={
+	cards={},
 
+	update={},
+	condition="ass",
+	next={}
+}
 
 
 -->8
@@ -2101,9 +2058,15 @@ function get_distance(obj1,obj2)
 	return pifagor(obj1.x-obj2.x,obj1.y-obj2.y)
 end
 
+function get_angle(self,other)
+	return atan2(other.x-self.x,other.y-self.y)
+end
+
 function randb(l,h) --exclusive
     return flr(rnd(h-l))+l
-end//rspr, screenshake
+end
+
+//rspr, screenshake
 //collide, square, pifagor
 //randb
 

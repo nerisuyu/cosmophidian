@@ -1,14 +1,15 @@
+
 //TODO test performance, how much enemies is the limit for boss to spawn
+
+
 //TODO Highscore
+//TODO пересмотреть inv damage 
 //TODO boss health and name ui
 //TODO set the release date 
 
 ///optional
 //TODO triangle trail 
 
-//TODO for missiles color ramp drw and size ramp upd for explosion 
-
-//FIXME camera bugs out on game start
 //FIXME parry
 
 enemies:
