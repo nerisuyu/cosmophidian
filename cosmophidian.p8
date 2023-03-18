@@ -302,31 +302,14 @@ function draw_game()
 	draw_ui()
 	print(#list_particles,cam.x-40,cam.y-64)
 	print(#list_enemies,cam.x-40,cam.y-58)
-	--[[
-	
-	
-	
-	print(get_available_enemy_volume(list_enemies),cam.x-64,cam.y-54)
-	]]
-	--[[
-	print(#projectiles,cam.x-64,cam.y-10,7)
-	print(#enemies,cam.x-64,cam.y-54,7)
-	
-	print(stat(7),cam.x-64,cam.y-64,7)
-	print(ship.hp,ship.x,ship.y+10,15)
-	print(ship.states.parry,ship.x+32,ship.y+32)
-	]]--
-	end
+end
 
-	function draw_ui()
-		rectfill(cam.x-65,cam.y+64,cam.x-65+128*(ship.laser_charge)/ship.laser_charge_max,cam.y+60,12)
-	end
+function draw_ui()
+	rectfill(cam.x-65,cam.y+64,cam.x-65+128*(ship.laser_charge)/ship.laser_charge_max,cam.y+60,12)
+end
 
 
-
-
-
-	health_circle_r=100
+health_circle_r=100
 function draw_health_circle()
 	local x=1-ship.hp/ship.maxhp
 	local current_r=92*(1-x^1.25)
@@ -412,13 +395,13 @@ function upd_ship()
 		sfx(33,3)
 		ship.states.shooting_cd=ship.states.shooting_cd_value
 		add_object(
-									{	group=list_projectiles,
-										x=ship.nosex,
-										y=ship.nosey,
-										angle=ship.angle,
-										dx=ship.dx,
-										dy=ship.dy},
-										template_bullet_ship)
+			{	group=list_projectiles,
+				x=ship.nosex,
+				y=ship.nosey,
+				angle=ship.angle,
+				dx=ship.dx,
+				dy=ship.dy},
+				template_bullet_ship)
 		add_object({
 			group=list_particles,
 			hp=3,
@@ -439,7 +422,7 @@ function upd_ship()
 	local ac=cos(ship.angle)
 	local as=sin(ship.angle)
 	
-	ship.speed=pifagor(ship.dx,ship.dy)
+	local speed=pifagor(ship.dx,ship.dy)
 
 	ship.x+=ship.dx
 	ship.y+=ship.dy
@@ -452,7 +435,7 @@ function upd_ship()
 	local cac =cos(curvel)
 	local cas =sin(curvel)
 
-	if ship.speed>ship.maxspeed 
+	if speed>ship.maxspeed 
 		then
 		ship.dx=ship.maxspeed*cac*0.97
 		ship.dy=ship.maxspeed*cas*0.97
@@ -460,8 +443,7 @@ function upd_ship()
 
 	ship.nosex=ship.x+7*ac
 	ship.nosey=ship.y+7*as
-	ship.assx=ship.x-4*ac
-	ship.assy=ship.y-4*as
+
 	ship.ass1x=ship.x-4*cos(ship.angle+0.01)
 	ship.ass1y=ship.y-4*sin(ship.angle+0.01)
 
@@ -486,18 +468,16 @@ function draw_ship()
 	if ship.states.laser then 
 		draw_laser(ship.nosex,ship.nosey,ship.angle,laser.length)
 		rspr(2,ship.x,
-									ship.y,
-									ship.angle,
-									1,
-									ship.scale)
+			ship.y,
+			ship.angle,
+			1,
+			ship.scale)
 	else
-		//spr(2,ship.x,ship.y)
-		
 		rspr(1,ship.x,
-									ship.y,
-									ship.angle,
-									1,
-									ship.scale)
+			ship.y,
+			ship.angle,
+			1,
+			ship.scale)
 	end
 end
 
@@ -606,13 +586,12 @@ end
 //manage collisions
 cr_dimensions=12 //or 13
 cr_border=3
-cr_cell=128/(cr_dimensions-2*cr_border)
+//cr_cell=128/(cr_dimensions-2*cr_border)
+cr_cell=64/3
 
 collision_regions={}
 
 player_collisions={}
-
-
 
 for i=1,cr_dimensions do
 	collision_regions[i]={}
@@ -622,7 +601,7 @@ for i=1,cr_dimensions do
 		collision_regions[i][j].fprojectile={}
 	end
 end
-
+--[[
 function cr_get_region(a)
 	local i=1+cr_border+flr((a.x-cam.x+64)*(cr_dimensions)/(128+2*cr_border*cr_cell))
 	local j=1+cr_border+flr((a.y-cam.y+64)*(cr_dimensions)/(128+2*cr_border*cr_cell))
@@ -631,37 +610,49 @@ end
 
 function cr_is_on_screen(a)
 	return a.x-cam.x+64>0-cr_cell
-				and a.x-cam.x+64<128+cr_cell*cr_border
-				and a.y-cam.y+64>0-cr_cell*cr_border
-				and a.y-cam.y+64<128+cr_cell*cr_border
+		and a.x-cam.x+64<128+cr_cell*cr_border
+		and a.y-cam.y+64>0-cr_cell*cr_border
+		and a.y-cam.y+64<128+cr_cell*cr_border
+end
+]]
+
+function cr_get_region(a)
+	return 4+flr((a.x-cam.x+64)*(3)/(64)),4+flr((a.y-cam.y+64)*(3)/(64))
+end
+
+function cr_is_on_screen(a)
+	return a.x-cam.x+64>-64
+		and a.x-cam.x+64<192
+		and a.y-cam.y+64>-64
+		and a.y-cam.y+64<192
 end
 
 function cr_is_near_player(a)
-		return a.x>ship.x-25
-				and a.x<ship.x+25
-				and a.y>ship.y-25
-				and a.y<ship.y+25
+	return a.x>ship.x-25
+		and a.x<ship.x+25
+		and a.y>ship.y-25
+		and a.y<ship.y+25
 
 end
 
 function add_enemy_collider(e)
 	if cr_is_on_screen(e) then
-			local i,j=cr_get_region(e)
-			add(collision_regions[i][j].enemies,e)
-		end
+		local i,j=cr_get_region(e)
+		add(collision_regions[i][j].enemies,e)
+	end
 end
 
 function add_enemy_projectile_collider(p)
 	if cr_is_near_player(p) then
-	add(player_collisions,p)
+		add(player_collisions,p)
 	end
 end
 
 function add_friend_projectile_collider(p)
 	if cr_is_on_screen(p) then
-			local i,j=cr_get_region(p)
-			add(collision_regions[i][j].fprojectile,p)
-		end
+		local i,j=cr_get_region(p)
+		add(collision_regions[i][j].fprojectile,p)
+	end
 end
 
 function clear_collisions()
@@ -669,7 +660,7 @@ function clear_collisions()
 		for j=1,cr_dimensions do
 			collision_regions[i][j].enemies={}
  			collision_regions[i][j].fprojectile={}
-			collision_regions[i][j].is_colliding=false
+			//collision_regions[i][j].is_colliding=false
 		end
 	end
 	player_collisions={}
@@ -677,13 +668,13 @@ end
 
 function collide_in_region(p,i,j)
 	for e in all(collision_regions[i][j].enemies) do
-		if collide(p,e)and p.invincible==0 and e.invincible==0 then
-			collision_regions[i][j].is_colliding=true
-			for f in all(p.on_hit) do
-				f(p,e)
+		if collide(p,e) and p.invincible==0 and e.invincible==0 then
+			//collision_regions[i][j].is_colliding=true
+			for f_oh in all(p.on_hit) do
+				f_oh(p,e)
 			end
-			for f in all(e.on_hit) do
-				f(e,p)
+			for f_oh in all(e.on_hit) do
+				f_oh(e,p)
 			end
 		end
 	end
@@ -720,7 +711,57 @@ function manage_player_collisions()
 		end
 	end
 end
-	
+
+
+
+function get_all_collision_region_fprojectile(i,j)
+	return all(collision_regions[i][j].fprojectile)
+end
+
+function manage_collisions()
+	for i=1,cr_dimensions do
+		for j=1,cr_dimensions do
+			for p in get_all_collision_region_fprojectile(i,j) do
+				collide_in_region(p,i,j)
+			end
+		end
+	end
+	for i=1,cr_dimensions-1 do
+		for j=1,cr_dimensions-1 do
+			for p in get_all_collision_region_fprojectile(i,j) do
+				collide_in_region(p,i+1,j)
+				collide_in_region(p,i,j+1)
+				collide_in_region(p,i+1,j+1)
+			end
+		end
+	end
+	for i=2,cr_dimensions do
+		for j=2,cr_dimensions do
+			for p in get_all_collision_region_fprojectile(i,j) do
+				collide_in_region(p,i,j-1)
+				collide_in_region(p,i-1,j)
+				collide_in_region(p,i-1,j-1)
+			end
+		end
+	end
+	for i=1,cr_dimensions-1 do
+		for j=2,cr_dimensions do
+			for p in get_all_collision_region_fprojectile(i,j) do
+			collide_in_region(p,i+1,j-1)
+			end
+		end
+	end
+	for i=2,cr_dimensions do
+		for j=1,cr_dimensions-1 do
+			for p in get_all_collision_region_fprojectile(i,j) do
+			collide_in_region(p,i-1,j+1)
+			end	
+		end
+	end
+end
+
+
+	--[[
 function manage_collisions()
 	for i=2,cr_dimensions-1 do
 		for j=2,cr_dimensions-1 do
@@ -770,7 +811,7 @@ function manage_collisions()
 			end
 		end
 end
-
+]]
 
 --[[
 function manage_collisions()
@@ -905,6 +946,7 @@ function manage_enemy_spawning()
 		c3=14,
 		hp=40,
 		l=20,
+		snake_width=10,
 		volume_added=10},
 		template_snake)
 		
@@ -1758,7 +1800,7 @@ template_empty={
 template_basic_particle={
 	parent=template_empty,
 	c1=7,
-	sd_rate=0.5,
+	sd_rate=0.90,
 	update={bh_fly_straight,bh_tick_hp,bh_slow_down},
     draw=drw_circle,
 	on_death={remove_object}
