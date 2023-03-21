@@ -1,15 +1,20 @@
 
-//TODO test performance, how much enemies is the limit for boss to spawn
 
 
-//TODO Highscore
-//TODO пересмотреть inv damage 
+//TODO enemy spawning
+//TODO boss death credits
 //TODO boss health and name ui
-//TODO set the release date 
+//TODO snake parry
+//TODO hitboxes in jaws?...
+//boss moves
+release fishes
+charge
+wander
+laser
+shoot huge bullet for player to parry
 
 ///optional
 //TODO triangle trail 
-
 //FIXME parry
 
 enemies:

@@ -20,11 +20,12 @@ sfx 41 enemy got hit sfx
 
 
 ship={}
-cam={}
+cam={x=0,y=0}
 null=function() end
-background=9
-void=0
-outline=0
+background=13
+void=1
+outline=1
+outline2=12
 freeze_frame=0
 list_animations={}
 
@@ -34,6 +35,10 @@ function _init()
 end
 
 function init_menu()
+	background=13
+	void=1
+	outline=1
+	outline2=12
 	_update60=update_menu
 	_draw=draw_menu
 	list_particles={}
@@ -42,16 +47,7 @@ function init_menu()
 	list_stars={}
 	list_animations={}
 	play_btn_color=7
-	shp=add_object({x=48,
-		y=32,
-		dx=0,
-		dy=0,
-		group=list_particles,
-		update={function (self)
-			self.x+=cos(t()/10)/10
-			self.y=self.x/3+64+5*cos(self.x/300+t()/10)*(1+sin(t()/130))-45
-		end}}
-		,ship_d_o)
+	
 	//poke(0x5f2d, 1)
 	music(1,100,5)
 	camera()
@@ -74,16 +70,6 @@ function update_menu()
 	tt=min(tt+1,10000)
 	
 	update_all_entities()
-	add_object({
-		group=list_particles,
-		x=shp.x,
-		y=shp.y-1,
-		dx=-2,
-		dy=randb(-10,10)/20-0.2,
-		c1=8,
-		draw=drw_circle,
-		sd_rate=1,
-		hp=40+randb(0,20)}, template_basic_particle)
 	
 	if btnp(❎) and not game_starting then
 		game_starting=true
@@ -99,20 +85,7 @@ function update_menu()
 			end
 			end)
 		add_animation(function ()
-			
-			for i=0,10 do
-				shp.x-=i/100
-				shp.y-=i/500
-				yield()
-			end
-			for i=0,10 do
-				shp.x-=0.5
-				shp.y-=0.2
-				yield()
-			end
-			for i=0,10 do
-				shp.x+=1+i/10
-				shp.y+=0.6-i/2000
+			for i=0,40 do
 				yield()
 			end
 			init_game()
@@ -178,6 +151,7 @@ end
 
 
 function init_game()
+
 	music(5,100,5)
 	list_stars={}
 	list_enemies={}
@@ -211,7 +185,7 @@ function init_game()
 						dcc=0.007,//0.005
 						turning_d=0.1,
 						maxspeed=1.5,
-						scale=0.7,
+						scale=0.5,
 						states={},
 
 						dash_cost=2,
@@ -238,6 +212,18 @@ function init_game()
 	
 
 	
+
+	cram_enemy({group=list_enemies,
+	volume_added=2,
+	volume=5},
+	template_enemy)
+	cram_enemy({group=list_enemies,
+	volume_added=2,
+	volume=5},
+	template_enemy)
+	
+	
+
 	add_stars()
 
 	_update60=update_game
@@ -301,7 +287,7 @@ function draw_game()
 	//rspr2(sprite,x,y,angle,transparent,pivot_x,pivot_y,x_len,y_len,scale)
 	draw_ship()
 	draw_ui()
-	print(#list_particles,cam.x-40,cam.y-64)
+	print(enemy_volume_max,cam.x-40,cam.y-64)
 	print(#list_enemies,cam.x-40,cam.y-58)
 end
 
@@ -407,12 +393,7 @@ function upd_ship()
 			group=list_particles,
 			hp=3,
 			draw=function ()
-				rspr(9,								//draw flash
-					ship.nosex,
-					ship.nosey,
-					ship.angle,
-					0,
-					1.5)
+				rspr2(9,ship.nosex,ship.nosey,ship.angle,0,3.5,3.5,7,7,1.5)
 			end
 		},template_basic_particle)
 	end
@@ -465,21 +446,18 @@ function draw_ship()
 		//fillp()
 		//spr(10+t%3,ship.x-3,ship.y-3)
 	end
-
+	local ass=1
 	if ship.states.laser then 
 		draw_laser(ship.nosex,ship.nosey,ship.angle,laser.length)
-		rspr(2,ship.x,
-			ship.y,
-			ship.angle,
-			1,
-			ship.scale)
-	else
-		rspr(1,ship.x,
-			ship.y,
-			ship.angle,
-			1,
-			ship.scale)
+		
+		ass=2
 	end
+	rspr2(ass,ship.x,ship.y,ship.angle,1,3.5,3.5,8,7,ship.scale)
+	--[[rspr(2,ship.x,
+			ship.y,
+			ship.angle,
+			1,
+			ship.scale)]]
 end
 
 function handle_input()
@@ -514,7 +492,7 @@ function handle_input()
 		if ship.states.parry_cd <0 and (ship.laser_charge>ship.dash_cost or (ship.laser_charge>0 and ship.laser_charge-ship.dash_cost<=0))then
 			sfx(32,3)
 			ship.laser_charge-=ship.dash_cost
-			fx_explode(ship)
+			//fx_explode(ship)
 			local qq=ship.x
 			local ww=ship.y
 			local ee=ship.dx
@@ -525,15 +503,15 @@ function handle_input()
 				line(qq,ww,qq+20*ee,ww+rr*20,12)
 			end},template_basic_particle)
 			add_animation(function ()
-				ship.x+=25*ship.dx
-				ship.y+=25*ship.dy
+				ship.x+=15*ship.dx
+				ship.y+=15*ship.dy
 				for i=0,8 do
 				//ship.dx+=1*cos(ship.angle)
 				//ship.dy+=1*sin(ship.angle)
 				yield()
 				end
 			end)
-		ship.states.parry=10
+		ship.states.parry=5
 		ship.states.parry_cd=ship.states.parry_cd_value
 		end
 	end
@@ -622,10 +600,12 @@ function cr_get_region(a)
 end
 
 function cr_is_on_screen(a)
-	return a.x-cam.x+64>-64
-		and a.x-cam.x+64<192
-		and a.y-cam.y+64>-64
-		and a.y-cam.y+64<192
+	local x=a.x or cam.x 
+	local y=a.y or cam.y
+	return x-cam.x+64>-32
+		and x-cam.x+64<160
+		and y-cam.y+64>-32
+		and y-cam.y+64<160
 end
 
 function cr_is_near_player(a)
@@ -684,7 +664,34 @@ end
 
 function manage_player_collisions()
 	for p in all(player_collisions) do
-		if collide(p,ship) then 
+		if ship.states.parry>0 and p.is_parriable and p.invincible==0 and collide(p,ship) then
+			for op in all(p.on_parry) do
+				op(p,ship)
+			end
+		elseif(collide_p(p,ship)) and ship.invincible==0 then 
+			for oh in all(p.on_hit) do
+				oh(p,ship)
+			end
+
+			if p.is_pickup==true then
+				for op in all(ship.on_pickup) do
+						op(ship,p)
+				end
+			else
+				for oh in all(ship.on_hit) do
+					oh(ship,p)
+				end
+			end
+		end
+	end
+
+		
+
+
+
+
+		--[[
+		if collide_p(p,ship) then 
 			if ship.states.parry>0 then
 				if p.is_parriable and 
 						p.invincible==0 then
@@ -711,6 +718,7 @@ function manage_player_collisions()
 			end
 		end
 	end
+	]]
 end
 
 
@@ -938,19 +946,16 @@ function manage_enemy_spawning()
 			prev_ship_position = current_position
 		end
 		
-	if tt>2 and tt%150==0 then
-		
+	if tt>2 and tt%30==0 and not is_boss_spawned then
+	
+	
+	
+--[[
 	cram_enemy({group=list_enemies,
-		volume=30,
-		c1=6,
-		c2=0,
-		c3=6,
-		hp=40,
-		l=100,
-		snake_width=10,
-		volume_added=10},
-		template_snake)
-		--[[
+	volume_added=10,
+	volume=20},
+	template_snake)
+		
 	cram_enemy({group=list_enemies,
 			volume=30,
 			scale=1.5,
@@ -961,15 +966,17 @@ function manage_enemy_spawning()
 			collider_r=8,
 			draw=drw_enemy_rsprite,
 			on_hit={fx_dissolve,oh_take_damage},
-			update={bh_face_towards_ship,bh_shoot_at_player, bh_hitbox}},
+			update={bh_face_towards_ship,bh_shoot, bh_hitbox}},
 		template_enemy)
 	
 	
-	cram_enemy({group=list_enemies,
-			volume_added=2,
-			volume=3},
-		template_enemy_fish)
+	
 		]]
+
+		if enemy_volume_max>200 and not is_boss_spawned then
+				is_boss_spawned=true
+				spawn_boss({x=ship.x,y=ship.y})
+		end
 	end
 end
 
@@ -1095,14 +1102,14 @@ function update_all_entities()
 	end
 	for a in all(list_particles) do
 		update_entity(a)
-		if not cr_is_on_screen then
+		if not cr_is_on_screen(a) then
 		del(list_particles,a)
 		end
 	end
 end
 
 function update_entity(self)
-	if bh_remove_if_far_away(self,despawn_distance) then
+	if not bh_remove_if_far_away(self,despawn_distance) then
 		for u in all(self.update) do
 			u(self)
 		end
@@ -1138,6 +1145,7 @@ function add_object(args,template)
 	new_obj=get_table_combination(args,new_obj)
 	new_obj.seed=randb(-100,100)
 	add(new_obj.group,new_obj)
+	if not new_obj.maxspeed then new_obj.maxspeed=new_obj.speed end
 	return new_obj
 end
 
@@ -1182,29 +1190,43 @@ end
 //can be invincible
 //can die
 function bh_remove_if_far_away(self,distance)
-	local d = 300 or distance
-	if (self.remove_if_far) then
-		if get_distance(self,ship)>d
+	local d = 180 or distance
+	if  self.remove_if_far then
+		if get_distance(self,ship)>=d
 		then
 			remove_object(self)
-			return false
+			return true
 		end
 	end
-	return true
+	return false
 end
 
 
 function bh_hitbox(self)
+	if self.friendly then 
+		add_friend_projectile_collider(self)
+	else
+		add_enemy_projectile_collider(self)
+		if self.group==list_enemies then
+			add_enemy_collider(self)
+		end
+	end
+	--[[
 	if self.group==list_enemies then
-		add_enemy_collider(self)
+		if self.friendly==true then
+			add_friend_projectile_collider(self)
+		else
+			add_enemy_collider(self)
+		end
 		add_enemy_projectile_collider(self)
 	else
 		if self.friendly==true then
 			add_friend_projectile_collider(self)
 		else
-			add_enemy_projectile_collider(self)
+			a
 		end
 	end
+	]]
 end
 
 function bh_tick_hp(self)
@@ -1246,12 +1268,12 @@ function bh_update_snake(self)
 				seed=randb(-100,100),
 				on_hit={ff,oh_knockback_other},
 				x=self.x,
-				y=self.y+10+i*10,
+				y=self.y,
 				angle=0,
 				hp_pellets=1,
 				laser_pellets=0,
 				speed=1,
-				damage=4,
+				damage=1,
 				inv_damage=20,
 				is_parriable=false,
 				
@@ -1275,7 +1297,7 @@ function bh_update_snake(self)
 		self.segments[1].on_hit={}
 		//self.segments[2].collider_r=self.snake_width*0.8
 	end
-
+	--[[
 	local dist=get_distance(self,ship)
 	if(dist>=100) then 
 		self.speed=ship.maxspeed*2
@@ -1284,8 +1306,9 @@ function bh_update_snake(self)
 		self.speed=self.maxspeed
 		self.turning_d=0.003
 	end
+	]]
 
-	local period=4
+	local period=8
 	for i=2,#self.segments do 
 		add_enemy_collider(self.segments[i])
 		add_enemy_projectile_collider(self.segments[i])
@@ -1350,33 +1373,27 @@ function bh_update_pellet(self)
 	end
 end
 
-function bh_shoot_at_player(self)
-	local ang=get_angle(self,ship)
-	if (tt+ceil(self.y))%100==0 or (tt+ceil(self.y)+20)%100==0 or (tt+ceil(self.y)+40)%100==0   then //
+function bh_shoot(self)
+	//local ang=get_angle(self,ship)
+	if (tt)%100==0 then //
 	for i=0,0 do
 		sfx(39,3)
-		shoot_missile(self,ship)
-		--[[
+		//shoot_missile(self,ship)
+		
 	add_object(
 		{
 		group=list_projectiles,
 		friendly=false,
-		hp=240,
-		speed=0.1,
 		x=self.x,
 		y=self.y,
 		radia=7,
 		seed=i/3,
-		speed=1,//+randb(-2,2)/20,
 		c1=7,
 		c2=outline,
-		angle=ang,
-		dx=0,
-		dy=0,
-		damage=2,
+		angle=self.angle1 or self.angle,
 		on_death={fx_dissolve,remove_object}},
 		template_bullet)
-		]]
+		
 		end
 		
 	end	
@@ -1392,22 +1409,33 @@ end
 
 function oh_take_damage(self,other)
 	if self.invincible==0 then
+		add_animation(function ()
+			local f=self.friendly
+			if other.friendly then
+				self.friendly=other.friendly
+			end
+			for i=0,other.damage do
+				yield()
+			end
+			self.friendly=f
+		end)
 		self.hp-=other.damage
 		self.invincible+=other.inv_damage
 	end
 end
 
 function oh_if_ship_then_die(self,other)
-	if other==ship then
+	if other==ship and ship.states.parry==0 then
 		del(self.group,self)
+		od_spawn_explosion(self)
 		fx_explode(self)
 	end
 end
 
 function oh_knockback_other(self,other)
 	local ang=get_angle(self,other)
-	other.dx=cos(ang)*2
-	other.dy=sin(ang)*2
+	other.dx=cos(ang)*1
+	other.dy=sin(ang)*1
 end
 
 function oh_knockback_self(self,other)
@@ -1434,37 +1462,55 @@ function drw_dead_snake(self)
 	
 end
 
-function drw_snake(self)
+function drw_snake_bg(self)
 	if self.segments then
 		local border_color=outline
-		if self.invincible>0 then
-			border_color=self.c2
-		end
+			if self.invincible>0 then
+				border_color=self.c2
+			end
 		circfill(self.x,self.y,self.segments[1].collider_r+2,border_color)
 		for i=2,#self.segments do
 			circfill(self.segments[i].x,self.segments[i].y,self.segments[i].collider_r+2,border_color)
 		end
-
-		local ca,sa=trig(self.angle1+0.25)
-		pal(1,border_color)
-		pal(14,self.c1)
-		pal(12,self.c2)
-		rspr2(16,self.x-ca*5,self.y-sa*5,0.5+self.angle1-0.05+0.05*sin(tt/100),0,5,3,14,37,1)
-		rspr2(18,self.x+ca*5,self.y+sa*5,0.5+self.angle1+0.05-0.05*sin(tt/100),0,5,3,14,37,1)
-		pal()
-		for i=2,#self.segments do
-			circfill(self.segments[i].x,self.segments[i].y,self.segments[i].collider_r,self.segments[i].c1)
-		end
-
+		return border_color
+	end
+end
+function drw_snake_body(self)
+	for i=#self.segments,2,-1 do
+		circfill(self.segments[i].x,self.segments[i].y,self.segments[i].collider_r,self.segments[i].c1)
+	end
+end
+function drw_snake(self)
+		drw_snake_bg(self)
+		drw_snake_body(self)
+		
 		pal(1,self.c1)
 		pal(12,self.c2)
+		//rspr3(sx,sy,x,y,a,w)
+		if(cr_is_on_screen(self)) then 
+			rspr2(7,self.x,self.y,self.angle,0,3,3,7,7,1)
+			//rspr3(56,0,self.x,self.y,self.angle,1)
+			//rspr4(i, j, x, y, w, h, flip_x, flip_y, pivot_x, pivot_y, angle, transparent_color)
+			//rspr4(7, 0, self.x,self.y, 1, 1, 0, 0, 4, 4, self.angle, 0)
+		end
 		//rspr(7,	self.x,self.y,self.angle,0,1)
-		print(self.hp,self.x+20,self.y+20)
 		pal()
-		
-		//rspr2(18,self.x,self.y,0.3-self.angle,0,10,3,14,32,1)
+end
 
+function drw_boss(self)
+	local border_color=drw_snake_bg(self)
+	local ca,sa=trig(self.angle1+0.25)
+	pal(1,border_color)
+	pal(14,self.c1)
+	pal(12,self.c2)
+	if(cr_is_on_screen(self)) then 
+		//rspr4(0, 1, self.x-ca*5,self.y-sa*5, 1, 3, 0, 0, 4, 4, 0.5+self.angle1-0.04+0.05*sin(tt/100), 0)
+		//rspr4(1, 1, self.x+ca*5,self.y+sa*5, 1, 3, 0, 0, 4, 4, 0.5+self.angle1+0.04-0.05*sin(tt/100), 0)
+		rspr2(16,self.x-ca*5,self.y-sa*5,0.5+self.angle1-0.04+0.05*sin(tt/100),0,3,2,7,35,1)
+		rspr2(17,self.x+ca*5,self.y+sa*5,0.5+self.angle1+0.05-0.05*sin(tt/100),0,4,2,7,35,1)
 	end
+	pal()
+	drw_snake_body(self)
 end
 
 function drw_debug(self)
@@ -1490,13 +1536,17 @@ function drw_circle(self)
 	end
 
 function drw_rsprite(self)
+	local ang=self.angle1 or self.angle
 	if(cr_is_on_screen(self)) do
-		rspr(self.spr,self.x,self.y,self.angle,self.c2,self.scale)
+		//rspr(self.spr,self.x,self.y,self.angle,self.c2,self.scale)
+		rspr2(self.spr,self.x,self.y,ang,self.c2,3,3,7,7,self.scale)
 	end
 		//print(self.hp,self.x,self.y+20)
 	end
 function drw_enemy_rsprite(self)
-	circfill(self.x,self.y,self.collider_r+1,outline)
+	local ol = outline
+	if self.invincible>0 then ol=outline2 end
+	circfill(self.x,self.y,self.collider_r,ol)
 	drw_rsprite(self)
 	//print(self.hp,self.x,self.y+20)
 	end
@@ -1593,15 +1643,19 @@ function fadeout(frames)
 end
 ]]
 	
+function fx_shake(a)
+	shake_explode(0.2)
+end
+
 function fx_explode(a)
-	shake_explode(0.1)
+	local dx,dy,x,y=a.dx,a.dy,a.x,a.y
 	if(cr_is_on_screen(a))then
 		for i=0,3 do
 			add_object({group=list_particles,
-				x=a.x,
-			y=a.y,
-			dx=a.dx+randb(-4,5)/2,
-			dy=a.dy+randb(-4,5)/2,
+				x=x,
+			y=y,
+			dx=dx+randb(-4,5)/2,
+			dy=dy+randb(-4,5)/2,
 			hp=60,
 			sd_rate=0.8,
 			collider_r=10,
@@ -1609,12 +1663,12 @@ function fx_explode(a)
 			c1=2},
 			template_basic_particle)
 		end
-		for i=0,4 do
+		for i=0,3 do
 			add_object({group=list_particles,
-			x=a.x,
-			y=a.y,
-			dx=a.dx+randb(-4,5)/6,
-			dy=a.dy+randb(-4,5)/6,
+			x=x,
+			y=y,
+			dx=dx+randb(-4,5)/6,
+			dy=dy+randb(-4,5)/6,
 			hp=40,
 			sd_rate=0.95,
 			draw=drw_circle,
@@ -1622,16 +1676,16 @@ function fx_explode(a)
 			template_basic_particle)
 		end
 		add_object({group=list_particles,
-		x=a.x,
-		y=a.y,
-		dx=a.dx,
-		dy=a.dy,
-		hp=5,
-		collider_r=6,
-		draw=drw_debug,
-		c1=7,
-		c2=7},
-		template_basic_particle)
+			x=x,
+			y=y,
+			dx=dx,
+			dy=dy,
+			hp=5,
+			collider_r=6,
+			draw=drw_debug,
+			c1=7,
+			c2=7},
+			template_basic_particle)
 	end
 end
 
@@ -1651,23 +1705,33 @@ function fx_dissolve(a)
 end
 
 function fx_ff(self)
-	freeze_frame+=10
+	freeze_frame+=15
 end
 
-function op_deflect1(self,other)
-	local ac,as=trig(self.angle)
-	local len=get_distance(self,other)
-	local ff=(other.x-self.x)/len*ac+(other.y-self.y)/len*as
-	if (ff>0)then
-		self.c1=9
-		self.angle=0.5+self.angle
-	else 
-		self.c1=14
-	end 
-	self.friendly=true
-	self.hp+=80
-	self.c1=7
-	self.damage+=20
+function op_turnaround(self,other)
+	self.angle=get_angle(self,other)+0.5
+	self.invincible+=20
+end
+
+function deflect_fish(self,other)
+	local ca,sa=trig(0.5+get_angle(self,other))
+	self.speed=0
+	self.parry+=70
+	add_animation(function ()
+		self.invincible+=10
+		self.friendly=true
+		
+		while(self.parry!=0) do
+			self.parry-=1
+			add_enemy_projectile_collider(self)
+			self.x+=ca
+			self.y+=sa
+			yield()
+		end
+		self.speed=self.maxspeed
+		self.friendly=false
+			
+	end)
 end
 
 function op_deflect_bullet(self,other)
@@ -1676,7 +1740,7 @@ function op_deflect_bullet(self,other)
 	self.hp+=80
 	self.damage+=10
 	self.c1=7
-	self.invincible=10
+	self.invincible=0
 end
 
 function od_die_snake(self)
@@ -1709,6 +1773,52 @@ function od_drop_pellets(self)
 			end
 end
 
+
+function spawn_boss(self)
+	music(20,15)
+	red_circle=add_object({
+		group=list_projectiles,
+		x=self.x,
+		y=self.y,
+		update={},
+		draw=drw_debug,
+		c1=8},
+		template_empty)
+	white_circle=add_object({
+		group=list_projectiles,
+		x=self.x,
+		y=self.y,
+		update={},
+		draw=drw_debug,
+		c1=0},
+		template_empty)
+	add_animation(function ()
+			for i=0,200 do	
+				red_circle.collider_r=i^1.5
+				white_circle.collider_r=min(20+3*sin(tt/1000),i^1.5)
+				for a in all(list_enemies)do
+					if get_distance(a,self)<=i^1.5 and a~=self then
+						a.hp=0
+					end
+				end
+				yield()
+			end
+			red_circle.c1=7
+			yield()
+			yield()
+			yield()
+			yield()
+			background=8
+			void=0
+			outline=0
+			red_circle.hp=0
+			white_circle.hp=0
+			
+			add_object({group=list_enemies,x=self.x,y=self.y},template_boss)
+			
+			
+		end)
+end
 function shoot_missile(self,other)
 	local new_missile=add_object({group=list_projectiles,
 		x=self.x,
@@ -1721,8 +1831,8 @@ function shoot_missile(self,other)
 	local p3_x,p3_y,p2_x,p2_y = other.x+other.dx*lifespan, other.y+other.dy*lifespan,p0_x+randb(-50,50), p0_y+randb(-50,50)
 	local p1_x,p1_y = (p0_x+p2_x)/2+randb(-50,50), (p0_y+p2_y)/2+randb(-50,50)
 	add_object({group=list_particles,
-		x=p3.x,
-		y=p3.y,
+		x=p3_x,
+		y=p3_y,
 		collider_r=8,
 		collider_r_cycle={8,8,7,6,4,1},
 		pallete_cycle={10,9,8},
@@ -1742,8 +1852,8 @@ function shoot_missile(self,other)
 			end
 		local expl=add_object({group=list_particles,
 			hp=5,
-			x=p3.x,
-			y=p3.y},
+			x=p3_x,
+			y=p3_y},
 		template_explosion)
 	end)
 end
@@ -1768,6 +1878,7 @@ template_empty={
 	y=0,
 	dx=0,
 	dy=0,
+	parry=0,
 	speed=0,
 	angle=0,
 	scale=1,
@@ -1794,7 +1905,7 @@ template_empty={
     draw=drw_debug,
     on_hit={},
 	on_pickup={},
-	on_death={},
+	on_death={remove_object},
 	on_parry={}
 }
 
@@ -1810,11 +1921,13 @@ template_basic_particle={
 template_explosion={
 	parent=template_basic_particle,
 	damage=10,
-	collider_r=7,
+	collider_r=10,
 	c1=7,
+	c2=7,
 	draw=drw_debug,
 	update={function(self)
-		add_enemy_projectile_collider(self)
+		
+		bh_hitbox(self)
 		bh_tick_hp(self)
 	end}
 }
@@ -1835,19 +1948,21 @@ template_trail_particle={
 	collider_r_cycle={2,2},
 	fillp_cycle={0,0,0,0b0010001000100010.1,0b0011001100110011.1,0b1011101110111011.1},
 	//fillp_cycle={0,0,0,0b1010000010100000.1,0b1010010110100101.1,0b1011111010111110.1},
-	maxhp=20,
-	hp=20,
+	maxhp=0,
+	hp=0,
 	draw=function(self)
-		if self.fillp!= 0 then
+		if cr_is_on_screen(self) then
+			--[[if self.fillp!= 0 then
 			fillp(self.fillp)
 			circfill(self.x,self.y,self.collider_r,self.c1)
 			fillp()
-		else
+			else]]
 			circfill(self.x,self.y,self.collider_r,self.c1)
-		end
+		
+	end
 	end,
 	update={bh_tick_hp,bh_cycle_pallete_and_size},
-	on_death={remove_object,remove_if_far}
+	on_death={remove_object}
 }
 
 template_pellet={
@@ -1891,32 +2006,44 @@ template_text={
 	on_death={remove_object}
 }]]
 
+function bh_turn_faster(self)
+	local dist=get_distance(self,ship)
+	self.speed=self.maxspeed*2^(-dist/100)
+	self.turning_d=0.0005*10^(dist/60)
+	--[[
+	if(dist>=100) then
+
+		self.speed=ship.maxspeed/2
+		self.turning_d=0.03
+	else
+		self.speed=self.maxspeed
+		self.turning_d=0.001
+	end]]
+end
+
 template_enemy={
 	parent=template_empty,
 	hp_pellets=1,
 	laser_pellets=1,
 	remove_if_far=true,
-	speed=0.1,
+	speed=1,
+	maxspeed=2,
 	scale=0.8,
-	volume=2,
+	turning_d=0.001,
 	collider_r=5,
-	group=list_enemies,
-	sp=2,
+	spr=6,
 	c1=4,
-	c2=background,
-	hp=10,
-	damage=2,
+	c2=0,
+	hp=12,
+	damage=6,
+	inv_damage=15,
 	is_parriable=true,
-    draw=drw_debug,
-	update={bh_hitbox},
+    draw=drw_enemy_rsprite,
+	update={bh_slow_down,bh_hitbox,bh_face_towards_ship,bh_fly_straight,bh_shoot,bh_turn_faster},
 	on_hit={oh_take_damage},
-	on_death={function() sfx(40,3) end;remove_object,od_raise_enemy_volume,od_drop_pellets},
-	on_parry={}
+	on_death={function() sfx(40,3) end,remove_object,od_raise_enemy_volume,od_drop_pellets,fx_explode},
+	on_parry={oh_knockback_self}
 	}
-
-
-
-
 
 
 template_snake={
@@ -1925,15 +2052,15 @@ template_snake={
 	speed=1,
 	volume=2,
 	collider_r=5,
-	turning_d=0.001,
+	turning_d=0.002,
 	sp=2,
 	c1=10,
 	c2=8,
 	c3=0,
 	snake_width=5,
 	sd_rate=0.95,
-	hp=80,
-	l=3,
+	hp=20,
+	l=10,
 	damage=8,
 	inv_damage=20,
 	laser_pellets=5,
@@ -1942,50 +2069,46 @@ template_snake={
     draw=drw_snake,
     on_hit={oh_take_damage},
 	on_death={fx_explode,od_die_snake,od_raise_enemy_volume,od_drop_pellets,function() background=13 outline=1 void=1 end},
-	on_parry={function(self) self.invincible=20 sfx(40,3)end,oh_knockback_self,fx_ff,fx_ff}
+	on_parry={op_turnaround,oh_knockback_self,oh_knockback_other,fx_ff}
 	}
-
 
 template_enemy_fish=
-	{
-		parent=template_enemy,
-		hp_pellets=2,
-		laser_pellets=2,
-		hp=5,
-		c1=0,
-		c2=1,
-		spr=3,
-		speed=1.2,
-		collider_r=3,
-		turning_d=0.05,
-		scale=0.3,
-		damage=3,
-		volume=1,
-		volume_added=0.5,
-		update={bh_fish_towards_ship,bh_hitbox},
-		on_hit={oh_take_damage,fx_dissolve,oh_if_ship_then_die,function() sfx(41,3)end},
-		on_death={function() sfx(40,3)end,fx_explode,remove_object,od_raise_enemy_volume,od_drop_pellets},
-		draw=drw_enemy_rsprite,
-		on_parry={oh_knockback_self}
-	}
+{	parent=template_enemy,
+	hp_pellets=2,
+	laser_pellets=1,
+	hp=3,
+	c1=0,
+	c2=1,
+	spr=3,
+	speed=1.3,
+	collider_r=3,
+	turning_d=0.05,
+	scale=0.5,
+	damage=3,
+	update={bh_fish_towards_ship,bh_hitbox},
+	on_hit={oh_take_damage,oh_if_ship_then_die,function() sfx(41,3)end},
+	on_death={od_spawn_explosion,function() sfx(40,3)end,fx_explode,remove_object,od_raise_enemy_volume,od_drop_pellets},
+	draw=drw_enemy_rsprite,
+	on_parry={fx_ff,deflect_fish,fx_explode}//oh_knockback_self}
+}
 
-	template_bullet={
-		parent=template_empty,
-		group=list_projectiles,
-		collider_r=3,
-		damage=2,
-		inv_damage=10,
-		hp=80,
-		c1=12,
-		c2=background,
-		speed=3,
-		is_parriable=true,
-		draw=drw_debug,
-		update={bh_fly_straight,bh_hitbox,bh_tick_hp},
-		on_hit={remove_object},
-		on_death={remove_object},
-		on_parry={op_deflect_bullet,function ()sfx(34,3)end,fx_ff,fx_ff}
-		}		
+template_bullet={
+	parent=template_empty,
+	group=list_projectiles,
+	collider_r=3,
+	damage=5,
+	inv_damage=10,
+	hp=80,
+	c1=12,
+	c2=background,
+	speed=3,
+	is_parriable=true,
+	draw=drw_debug,
+	update={bh_fly_straight,bh_hitbox,bh_tick_hp},
+	on_hit={remove_object},
+	on_death={remove_object},
+	on_parry={op_deflect_bullet,function ()sfx(34,3)end,fx_ff,fx_ff}
+	}		
 
 template_bullet_ship={
 	parent=template_bullet,
@@ -1997,6 +2120,101 @@ template_bullet_ship={
 	friendly=true,
 	on_parry={}
 	}
+
+
+function bh_boss(self)
+	if not self.activated then
+		self.activated=true
+		music(21)
+		boss_unwind(self)
+		
+	end
+	
+end
+
+function boss_wander(self)
+	add_animation(function ()
+		for i=0,120 do 
+			local dist=get_distance(self,ship)
+			if(dist>=100) then 
+				sfx(41,3)
+				self.speed=ship.maxspeed*2
+				self.turning_d=0.01
+			else
+				self.speed=self.maxspeed
+				self.turning_d=0.003
+			end
+			yield() 
+		end
+		add_animation(function ()
+			for i=0,60 do
+				if i%15==0 then
+					shoot_missile(self,ship)
+				end
+				yield()
+			end
+		end)
+		boss_charge(self)
+	end)
+end
+
+function boss_charge(self)
+	add_animation(function ()
+		self.turning_d=0.002
+		self.speed=0.03
+		for i=0,60 do yield() end
+		self.turning_d=0.003
+		for i=0,25 do  
+			self.speed=8-i/4
+			yield() end
+		self.turning_d=0.001
+		self.speed=1
+		boss_wander(self)
+		end) 
+end
+
+
+function boss_unwind(self)
+	add_animation(function ()
+		self.turning_d=0
+		self.speed=2
+		for i=0,160 do
+			self.angle+=0.01-0.01*(i/160)^0.6
+			yield()
+		end 
+		boss_wander(self)
+		end) 
+end
+
+
+
+
+template_boss={
+	c1=7,c2=8,c3=7,
+	l=70,
+	hp=80,
+	turning_d=0.001,
+	maxspeed=1.3,
+	speed=1,
+	snake_width=9,
+	parent=template_snake,
+	draw=drw_boss,
+	update={bh_snake_towards_ship,bh_slow_down,bh_hitbox,bh_update_snake,bh_boss},
+}
+
+
+
+function od_spawn_explosion(self)
+	local expl=add_object({group=list_particles,
+	hp=7,
+	friendly=self.friendly,
+	x=self.x,
+	y=self.y},
+template_explosion)
+end
+
+
+
 	
 
 	
@@ -2021,7 +2239,7 @@ stage1={
 //rspr, screenshake
 //collide, square, pifagor
 //randb
-
+--[[
 function rspr(sp,x,y,a,t,scale)
 	local ca,sa=trig(-a+0.25)
 	local sp_x=sp%16*8
@@ -2046,7 +2264,7 @@ function rspr(sp,x,y,a,t,scale)
 		end
 	end
 end
-
+]]
 function rspr2(sprite,x,y,angle,transparent,pivot_x,pivot_y,x_len,y_len,scale)
 	local ca,sa=trig(-angle+0.25)
 	local sp_x=sprite%16*8
@@ -2056,13 +2274,92 @@ function rspr2(sprite,x,y,angle,transparent,pivot_x,pivot_y,x_len,y_len,scale)
 			local pix=sget(sp_x+ix+pivot_x,sp_y+iy+pivot_y)
 			if (pix~=transparent) then
 				pset(x+(ix*ca+iy*sa)*scale,y+(iy*ca-ix*sa)*scale,pix)
-				pset(x+(ix*ca+iy*sa)*scale+0.5,y+(iy*ca-ix*sa)*scale+0.5,pix)
-				pset(x+(ix*ca+iy*sa)*scale-0.5,0.5+y+(iy*ca-ix*sa)*scale-0.5,pix)
+				pset(x+(ix*ca+iy*sa)*scale+0.5*scale,y+(iy*ca-ix*sa)*scale+0.5*scale,pix)
+				pset(x+(ix*ca+iy*sa)*scale-0.5*scale,0.5*scale+y+(iy*ca-ix*sa)*scale-0.5*scale,pix)
+
 			end
 		end
 	end
 end
+--[[
+function rspr3(sx,sy,x,y,a,w)
+    local ca,sa=cos(a),sin(a)
+    local srcx,srcy
+    local ddx0,ddy0=ca,sa
+    local mask=shl(0xfff8,(w-1))
+    w*=4
+    ca*=w-0.5
+    sa*=w-0.5
+    local dx0,dy0=sa-ca+w,-ca-sa+w
+    w=2*w-1
+    for ix=0,w do
+        srcx,srcy=dx0,dy0
+        for iy=0,w do
+            if band(bor(srcx,srcy),mask)==0 then
+                local c=sget(sx+srcx,sy+srcy)
+                pset(x+ix,y+iy,c)
+            end
+            srcx-=ddy0
+            srcy+=ddx0
+        end
+        dx0+=ddx0
+        dy0+=ddy0
+    end
+end
 
+function rspr4(i, j, x, y, w, h, flip_x, flip_y, pivot_x, pivot_y, angle, transparent_color)
+	-- precompute pixel values from tile indices: sprite source top-left, sprite size
+	local sx = 8 * i
+	local sy = 8 * j
+	local sw = 8 * w
+	local sh = 8 * h
+  
+	-- precompute angle trigonometry
+	local sa = sin(angle)
+	local ca = cos(angle)
+  
+	-- in the operations below, 0.5 offsets represent pixel "inside"
+	-- we let PICO-8 functions floor coordinates at the last moment for more symmetrical results
+  
+	-- precompute "target disc": where we must draw pixels of the rotated sprite (relative to (x, y))
+	-- the target disc ratio is the distance between the pivot the farthest corner of the sprite rectangle
+	local max_dx = max(pivot_x, sw - pivot_x) - 0.5 
+	local max_dy = max(pivot_y, sh - pivot_y) - 0.5
+	local max_sqr_dist = max_dx * max_dx + max_dy * max_dy
+	local max_dist_minus_half = ceil(sqrt(max_sqr_dist)) - 0.5
+  
+	-- iterate over disc's bounding box, then check if pixel is really in disc
+	for dx = - max_dist_minus_half, max_dist_minus_half do
+	  for dy = - max_dist_minus_half, max_dist_minus_half do
+		if dx * dx + dy * dy <= max_sqr_dist then
+		  -- prepare flip factors
+		  local sign_x = flip_x and -1 or 1
+		  local sign_y = flip_y and -1 or 1
+  
+		  -- if you don't use luamin (which has a bracket-related bug),
+		  -- you don't need those intermediate vars, you can just inline them if you want
+		  local rotated_dx = sign_x * ( ca * dx + sa * dy)
+		  local rotated_dy = sign_y * (-sa * dx + ca * dy)
+  
+		  local xx = pivot_x + rotated_dx
+		  local yy = pivot_y + rotated_dy
+  
+		  -- make sure to never draw pixels from the spritesheet
+		  --  that are outside the source sprite
+		  if xx >= 0 and xx < sw and yy >= 0 and yy < sh then
+			-- get source pixel
+			local c = sget(sx + xx, sy + yy)
+			-- ignore if transparent color
+			if c ~= transparent_color then
+			  -- set target pixel color to source pixel color
+			  pset(x + dx, y + dy, c)
+			end
+		  end
+		end
+	  end
+	end
+  end
+]]
 offset_g=0
 offset_e=0
 offset=0
@@ -2136,52 +2433,54 @@ end
 
 
 
+
+
 __gfx__
-000000001116611111177111111cc11111888811000000000000000000c00c000007700000000000006c000000076c0000000000002220000088880000000000
-000000001116611111177111111cc1111188881100000000000000000111111007777770000000000c000000000000c000a0a000022222000800008000000000
-00700700111661111117711111cccc11118cc811000cc000000aa00011c11c110777777000070000c00000000000000c00a0a000222722208880880800000000
-0007700011666611117aa71111cccc1111cccc11000cc000000aa0001cc11cc17777777700777000600000077000000c00a0a000227792208088000800000000
-0007700011666611117aa711111cc111111cc11100cccc0000adda001c1111c17777777777777770700000067000000600000000222922208008800800000000
-007007001166661111aaaa11111cc111111cc1110cccccc00adddda01111111107777770000000000000000cc00000000a000a00022222008080080800000000
-00000000166666611aaaaaa111cccc1111cccc110000000000000000111111110777777000000000000000c0060000000aaaaa00002220008800008800000000
-00000000166666611aaaaaa111c11c1111c11c110000000000000000011111100007700000000000000cc60000cc000000000000000000000888888000000000
-11111111110000000000111111111100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-11eeeeee11000000000011eeeeee1100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-11eeeeee11100000000111eeeeee1100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-111eeeeec110000000011ceeeee11100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-111eeeeecc1100000011cceeeee11100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-011eeeee11100000000111eeeee11000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-011eeeee11100000000111eeeee11000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-011eeeeec111000000111ceeeee11000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-011eeeeeccc11000011ccceeeee11000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-011eeeee11110000001111eeeee11000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-011eeeee11100000000111eeeee11000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-011eeeeec111000000111ceeeee11000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-011eeeeeccc11000011ccceeeee11000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-011eeeee11110000001111eeeee11000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-011eeeee11100000000111eeeee11000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-011eeeeec110000000011ceeeee11000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-011eeeeec111100001111ceeeee11000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-011eeeeecccc110011cccceeeee11000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-011eeeee11111000011111eeeee11000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-011eeeee11100000000111eeeee11000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-011eeeeec110000000011ceeeee11000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-011eeeeecc1110000111cceeeee11000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0111eeeecccc110011cccceeee111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0111eeee11111000011111eeee111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0011eeee11100000000111eeee110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0011eeeec110000000011ceeee110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0011eeeecc1110000111cceeee110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0011eeeecccc110011cccceeee110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0011eeee11111000011111eeee110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0011eeee11110000001111eeee110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0011eeeec111000000111ceeee110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0011eeeecc1110000111cceeee110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0011eeeecccc110011cccceeee110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00111eeee111100001111eeee1110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00011eeee110000000011eeee1100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00011111111000000001111111100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000111110000000000111110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000111aa111111771111117711111888811000000000000000000c00c000007700000000000006c000000076c0000000000002220000088880000000000
+00000000111aa11111177111111771111188881100000000000aa0000111111007777770000000000c000000000000c000a0a000022222000800008000000000
+00700700111aa11111177111117ee711118cc811000cc00000aaaa0011c11c110777777000070000c00000000000000c00a0a000222722208880880800000000
+0007700011aaaa11117aa71111eeee1111cccc11000cc0000aaaaaa01cc11cc17777777700777000600000077000000c00a0a000227792208088000800000000
+0007700011aaaa11117aa711111ee111111cc11100cccc00aaeeeeaa1c1111c17777777777777770700000067000000600000000222922208008800800000000
+0070070011aaaa1111aaaa11111ee111111cc1110cccccc0eeeeeeee1111111107777770000000000000000cc00000000a000a00022222008080080800000000
+000000001aaaaaa11aaaaaa111eeee1111cccc11000000000ee00ee0111111110777777000000000000000c0060000000aaaaa00002220008800008800000000
+000000001aaaaaa11aaaaaa111e11e1111c11c110000000000000000011111100007700000000000000cc60000cc000000000000000000000888888000000000
+1eeee11011eeee100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+1eeeec101ceeee100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+1eeeecc0cceeee100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+1eeee11011eeee100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+1eeee11011eeee100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+1eeee11011eeee100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+1eeeec101ceeee100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+1eeeecc0cceeee100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+1eeee11011eeee100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+1eeee11011eeee100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+1eeee11011eeee100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+1eeeec101ceeee100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+1eeeecc0cceeee100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+1eeee11011eeee100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+1eeee11011eeee100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+11eee11011eee1100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+11eeec101ceee1100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+01eeecc0cceee1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+01eee11011eee1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+01eee11011eee1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+01eee11011eee1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+01eeec101ceee1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+01eeecc0cceee1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+01eee11011eee1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+01eee11011eee1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+01eee11011eee1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+01eeec101ceee1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+01eeecc0cceee1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+01eee11011eee1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+01eee11011eee1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+01eee11011eee1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+01eeec101ceee1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+01eeecc0cceee1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+011eee101eee11000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00111110111110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -2419,10 +2718,10 @@ __sfx__
 011400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 011000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 011000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-011000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0003010009620086210662105621046210362103621036210262102611026110261101611016110161101611016110161101601016011260112601126011260115601126011160111601116011c6011c60100601
+0114000000c7408c5408c5408c5408c5408c7408c5408c5400c5408c5408c5408c5408c5408c7400c5408c5408c5408c5408c5400c5406c5406c5406c5400c5408c5408c5406c5406c5406c5400c5408c5408c54
+0114001e0c073000030c0730c0030c6751363511655000030c0730c6250c0730c6250c6051363511655000030c073000030c0730c625000030c65500003000030c073000030c0730c625000030c6550000300003
+0114001e0c053000030c0530c003000030000300003000030c053000030c05300003000030000300003000030c053000030c05300003000030000300003000030c053000030c0530000300003000030000300003
+0003010009600086010660105601046010360103601036010260102601026010260101601016010160101601016010160101601016011260112601126011260115601126011160111601116011c6011c60100601
 010100000945600456084560045607456004560645600456054560a4560545600456054560045606456004560a4460a446064460a4460b4460a43605436084360a42608426074260642606426064160141605416
 000100000e70026710267102672027730277302973028730357000270002700017000370032700317002f7002b70027700237001e7002e7001f7001b7401873012730147200f7100c71011710097100f71006700
 00010000071701115005140021500b1000b1000610001100330000010000100001000010000100001000010000100001000010000100001000010000100001000010000100001000010000100001000010000100
@@ -2452,4 +2751,9 @@ __music__
 00 17144a16
 00 17140a15
 02 17140b16
+00 41424344
+00 41424344
+00 41424344
+03 1d424344
+03 1c1b4344
 
