@@ -60,8 +60,8 @@ function draw_menu()
 	pal(7,play_btn_color)
 	spr(208,10,54,-2+tt/2,3)
 	print("press ❎ to play",30,90,play_btn_color)
-	print("bitch-ass edition",51,71+sin(tt/200)*1.9,12)
-	print("bitch-ass edition",50,71-sin(tt/200)*1.9,8)
+	print("Lynyrd Skynyrd-Free Bird edition",1,71+sin(tt/200)*1.9,12)
+	print("Lynyrd Skynyrd-Free Bird edition",0,71-sin(tt/200)*1.9,8)
 	
 	line(-6+8*tt/2,55,-6+8*tt/2,70,play_btn_color)
 end
@@ -132,8 +132,7 @@ function draw_game_over()
 	draw_all(list_projectiles)
 	draw_all(list_particles)
 	draw_all(list_enemies)
-	print("time:",cam.x-64,cam.y-64)
-	print(tt/60.0,cam.x-40,cam.y-64)
+
 	
 end
 
@@ -153,18 +152,19 @@ end
 function init_game()
 
 	music(5,100,5)
+	load_stage(stage1)
 	list_stars={}
 	list_enemies={}
 	list_particles={}
 	list_projectiles={}
 	list_animations={}
 	clear_collisions()
-	enemy_volume_max=30
+	
 	despawn_distance=180
 	ship={x=64,y=64,dx=0,dy=0,
 						ax=0,ay=0,
-						hp=40,
-						maxhp=40,
+						hp=60,
+						maxhp=60,
 						regen=0.01,//0.02,
 						collider_r=10,
 						damage=2,
@@ -213,15 +213,6 @@ function init_game()
 
 	
 
-	cram_enemy({group=list_enemies,
-	volume_added=2,
-	volume=5},
-	template_enemy)
-	cram_enemy({group=list_enemies,
-	volume_added=2,
-	volume=5},
-	template_enemy)
-	
 	
 
 	add_stars()
@@ -287,8 +278,14 @@ function draw_game()
 	//rspr2(sprite,x,y,angle,transparent,pivot_x,pivot_y,x_len,y_len,scale)
 	draw_ship()
 	draw_ui()
+	--[[
 	print(enemy_volume_max,cam.x-40,cam.y-64)
 	print(#list_enemies,cam.x-40,cam.y-58)
+	print(enemy_count_max,cam.x-30,cam.y-58)
+	print(enemy_points,cam.x-40,cam.y-52)
+	print(current_stage.name,cam.x-20,cam.y-64)
+	//print(#current_stage.cards,cam.x,cam.y)
+	print(current_stage.cards[1][3],cam.x,cam.y)]]
 end
 
 function draw_ui()
@@ -580,20 +577,7 @@ for i=1,cr_dimensions do
 		collision_regions[i][j].fprojectile={}
 	end
 end
---[[
-function cr_get_region(a)
-	local i=1+cr_border+flr((a.x-cam.x+64)*(cr_dimensions)/(128+2*cr_border*cr_cell))
-	local j=1+cr_border+flr((a.y-cam.y+64)*(cr_dimensions)/(128+2*cr_border*cr_cell))
-	return i,j
-end
 
-function cr_is_on_screen(a)
-	return a.x-cam.x+64>0-cr_cell
-		and a.x-cam.x+64<128+cr_cell*cr_border
-		and a.y-cam.y+64>0-cr_cell*cr_border
-		and a.y-cam.y+64<128+cr_cell*cr_border
-end
-]]
 
 function cr_get_region(a)
 	return 4+flr((a.x-cam.x+64)*(3)/(64)),4+flr((a.y-cam.y+64)*(3)/(64))
@@ -770,159 +754,7 @@ function manage_collisions()
 end
 
 
-	--[[
-function manage_collisions()
-	for i=2,cr_dimensions-1 do
-		for j=2,cr_dimensions-1 do
-			for p in all(collision_regions[i][j].fprojectile) do
-				for u=i-1,i+1 do
-					for y=j-1,j+1 do 
-					collide_in_region(p,u,y)
-					end
-				end
-			end
-		end
-	end
-	i=1
-		for j=2,cr_dimensions-1 do
-			for p in all(collision_regions[i][j].fprojectile) do
-				collide_in_region(p,i,j)
-				collide_in_region(p,i+1,j)
-				collide_in_region(p,i,j+1)
-				collide_in_region(p,i,j-1)
-			end
-		end
-	i=cr_dimensions
-		for j=2,cr_dimensions-1 do
-			for p in all(collision_regions[i][j].fprojectile) do
-				collide_in_region(p,i,j)
-				collide_in_region(p,i,j+1)
-				collide_in_region(p,i-1,j)
-				collide_in_region(p,i,j-1)
-			end
-		end
-	j=1
-		for i=2,cr_dimensions-1 do
-				for p in all(collision_regions[i][j].fprojectile) do
-				collide_in_region(p,i,j)
-				collide_in_region(p,i+1,j)
-				collide_in_region(p,i-1,j)
-				collide_in_region(p,i,j+1)
-			end
-		end
-	j=cr_dimensions
-		for i=2,cr_dimensions-1 do
-			for p in all(collision_regions[i][j].fprojectile) do
-				collide_in_region(p,i,j)
-				collide_in_region(p,i-1,j)
-				collide_in_region(p,i+1,j)
-				collide_in_region(p,i,j-1)
-			end
-		end
-end
-]]
 
---[[
-function manage_collisions()
-	for i=2,cr_dimensions-1 do
-		for j=2,cr_dimensions-1 do
-			for p in all(collision_regions[i][j].fprojectile) do
-				collide_in_region(p,i,j)
-				collide_in_region(p,i+1,j)
-				collide_in_region(p,i-1,j)
-				collide_in_region(p,i,j+1)
-				collide_in_region(p,i,j-1)
-				collide_in_region(p,i-1,j-1)
-				collide_in_region(p,i+1,j-1)
-				collide_in_region(p,i+1,j+1)
-				collide_in_region(p,i-1,j+1)
-			end
-		end
-	end
-	i=1
-		for j=2,cr_dimensions-1 do
-			for p in all(collision_regions[i][j].fprojectile) do
-				collide_in_region(p,i,j)
-				collide_in_region(p,i+1,j)
-				collide_in_region(p,i,j+1)
-				collide_in_region(p,i,j-1)
-			end
-		end
-	i=cr_dimensions
-		for j=2,cr_dimensions-1 do
-			for p in all(collision_regions[i][j].fprojectile) do
-				collide_in_region(p,i,j)
-				collide_in_region(p,i,j+1)
-				collide_in_region(p,i-1,j)
-				collide_in_region(p,i,j-1)
-			end
-		end
-	j=1
-		for i=2,cr_dimensions-1 do
-				for p in all(collision_regions[i][j].fprojectile) do
-				collide_in_region(p,i,j)
-				collide_in_region(p,i+1,j)
-				collide_in_region(p,i-1,j)
-				collide_in_region(p,i,j+1)
-			end
-		end
-	j=cr_dimensions
-		for i=2,cr_dimensions-1 do
-			for p in all(collision_regions[i][j].fprojectile) do
-				collide_in_region(p,i,j)
-				collide_in_region(p,i-1,j)
-				collide_in_region(p,i+1,j)
-				collide_in_region(p,i,j-1)
-			end
-		end
-end
-]]--
-
---[[
-function draw_collisions()
-	local h=(cr_border*2*cr_cell+128)/(cr_dimensions)
-	
-	for p in all(player_collisions) do
-		circ(p.x,p.y,p.collider_r+1,0)	
-		print(p.damage,p.x,p.y+5,0)		
-		
-	end
-		circ(ship.x,ship.y,ship.collider_r,0)			
-		circ(ship.x,ship.y,2,0)			
-		
-	for i=1,cr_dimensions do
-		for j=1,cr_dimensions do
-			for p in all(collision_regions[i][j].fprojectile) do
-				circ(p.x,p.y,p.collider_r,0)			
-			end
-			for p in all(collision_regions[i][j].enemies) do
-				circ(p.x,p.y,p.collider_r,9)			
-			end
-		rect(cam.x+(i-1)*h-64-cr_cell*cr_border,
-							cam.y+(j-1)*h-64-cr_cell*cr_border,
-							cam.x+(i)*h-64-cr_cell*cr_border,
-							cam.y+(j)*h-64-cr_cell*cr_border,
-							0)
-		//print(#collision_regions[i][j].fprojectile,
-		--					cam.x+(i-1)*h-64,
-		--					cam.y+(j-1)*h-64,7)
-		--print(#collision_regions[i][j].enemies,
-		--					cam.x+(i-1)*h-64+10,
-		--					cam.y+(j-1)*h-64,7)			
-		if collision_regions[i][j].is_colliding 
-		 then
-			rect(cam.x+(i-1)*h-64-25-cr_cell*cr_border,
-							cam.y+(j-1)*h-64-25-cr_cell*cr_border,
-							cam.x+(i)*h-64+25-cr_cell*cr_border,
-							cam.y+(j)*h-64+25-cr_cell*cr_border,
-							10)
-			print(i,cam.x+10,cam.y-10,15)
-			end
-		end
-	end
-end
-]]
--->8
 
 
 
@@ -939,43 +771,31 @@ end
 movement_vector={x=0,y=0}
 prev_ship_position={x=0,y=0}
 function manage_enemy_spawning()
-		if tt%120==0 then
-			local current_position={x=ship.x,y=ship.y}
-			movement_vector.x=(current_position.x-prev_ship_position.x)/120
-			movement_vector.y=(current_position.y-prev_ship_position.y)/120
-			prev_ship_position = current_position
-		end
+	if tt%120==0 then
+		local current_position={x=ship.x,y=ship.y}
+		movement_vector.x=(current_position.x-prev_ship_position.x)/120
+		movement_vector.y=(current_position.y-prev_ship_position.y)/120
+		prev_ship_position = current_position
+	end
+	local interval=current_stage.interval or 30
+	if tt>20 and tt%interval==0 then
+		if enemy_points<current_stage.goal then
+			local ent=current_stage.cards[flr(1+rnd(#current_stage.cards))]
 		
-	if tt>2 and tt%30==0 and not is_boss_spawned then
-	
-	
-	
---[[
-	cram_enemy({group=list_enemies,
-	volume_added=10,
-	volume=20},
-	template_snake)
-		
-	cram_enemy({group=list_enemies,
-			volume=30,
-			scale=1.5,
-			c1=7,
-			spr=4,
-			c2=1,
-			volume_added=0.5,
-			collider_r=8,
-			draw=drw_enemy_rsprite,
-			on_hit={fx_dissolve,oh_take_damage},
-			update={bh_face_towards_ship,bh_shoot, bh_hitbox}},
-		template_enemy)
-	
-	
-	
-		]]
+			cram_enemy({group=list_enemies,
+				volume=ent[2],
+				volume_added=ent[3]
+			},ent[1])
 
-		if enemy_volume_max>200 and not is_boss_spawned then
-				is_boss_spawned=true
-				spawn_boss({x=ship.x,y=ship.y})
+
+		else
+			if current_stage.next then
+				load_stage(current_stage.next)
+			elseif not boss_spawned then
+					boss_spawned=true
+					spawn_boss({x=ship.x,y=ship.y})
+				
+			end
 		end
 	end
 end
@@ -1013,13 +833,28 @@ function draw_average_position()
 end
 ]]
 
+
+
+
+function load_stage(self)
+	enemy_points=0
+	enemy_count_max=self.max_enemies
+	enemy_volume_max=self.volume
+	current_stage=self
+end
+
+
 function cram_enemy(args,template)
-	if get_table_combination(args,template).volume<=
-	get_available_enemy_volume(get_table_combination(args,template).group)
+	if get_table_combination(args,template).volume<=get_available_enemy_volume(get_table_combination(args,template).group) and #list_enemies!=enemy_count_max 
 	then
 		add_object(get_table_combination(get_enemy_spawn_location(),args),template)
 	end
 end
+
+
+
+
+
 -->8
 //enemies and snakes
 //stars, particles and projectiles
@@ -1190,7 +1025,7 @@ end
 //can be invincible
 //can die
 function bh_remove_if_far_away(self,distance)
-	local d = 180 or distance
+	local d = 250 or distance
 	if  self.remove_if_far then
 		if get_distance(self,ship)>=d
 		then
@@ -1374,29 +1209,27 @@ function bh_update_pellet(self)
 end
 
 function bh_shoot(self)
-	//local ang=get_angle(self,ship)
-	if (tt)%100==0 then //
-	for i=0,0 do
+	if (tt+self.seed)%100==0 then 
 		sfx(39,3)
 		//shoot_missile(self,ship)
-		
-	add_object(
-		{
-		group=list_projectiles,
-		friendly=false,
-		x=self.x,
-		y=self.y,
-		radia=7,
-		seed=i/3,
-		c1=7,
-		c2=outline,
-		angle=self.angle1 or self.angle,
-		on_death={fx_dissolve,remove_object}},
-		template_bullet)
-		
-		end
-		
+		add_object(
+			{group=list_projectiles,
+			friendly=false,
+			x=self.x,
+			y=self.y,
+			c1=7,
+			c2=outline,
+			angle=self.angle1 or self.angle,
+			on_death={fx_dissolve,remove_object}},
+			template_bullet)
 	end	
+end
+
+function bh_shoot_missile(self)
+	if (tt+self.seed)%100==0 then 
+		sfx(39,3)
+		shoot_missile(self,ship)
+	end
 end
 
 function bh_cycle_pallete_and_size(self)
@@ -1495,6 +1328,7 @@ function drw_snake(self)
 		end
 		//rspr(7,	self.x,self.y,self.angle,0,1)
 		pal()
+		print(self.hp,self.x+10,self.y+10)
 end
 
 function drw_boss(self)
@@ -1545,7 +1379,9 @@ function drw_rsprite(self)
 	end
 function drw_enemy_rsprite(self)
 	local ol = outline
-	if self.invincible>0 then ol=outline2 end
+	if self.invincible>0 then 
+		ol=outline2 
+	end
 	circfill(self.x,self.y,self.collider_r,ol)
 	drw_rsprite(self)
 	//print(self.hp,self.x,self.y+20)
@@ -1716,16 +1552,16 @@ end
 function deflect_fish(self,other)
 	local ca,sa=trig(0.5+get_angle(self,other))
 	self.speed=0
-	self.parry+=70
+	self.parry+=80
 	add_animation(function ()
 		self.invincible+=10
 		self.friendly=true
 		
 		while(self.parry!=0) do
 			self.parry-=1
-			add_enemy_projectile_collider(self)
-			self.x+=ca
-			self.y+=sa
+			self.angle+=0.1
+			self.x+=ca*1.5
+			self.y+=sa*1.5
 			yield()
 		end
 		self.speed=self.maxspeed
@@ -1750,7 +1586,7 @@ function od_die_snake(self)
 end
 
 function od_raise_enemy_volume(self)
-	enemy_volume_max+=self.volume_added
+	enemy_points+=self.volume_added
 end
 
 function od_drop_pellets(self)
@@ -1830,7 +1666,7 @@ function shoot_missile(self,other)
 	local p0_x,p0_y = self.x, self.y
 	local p3_x,p3_y,p2_x,p2_y = other.x+other.dx*lifespan, other.y+other.dy*lifespan,p0_x+randb(-50,50), p0_y+randb(-50,50)
 	local p1_x,p1_y = (p0_x+p2_x)/2+randb(-50,50), (p0_y+p2_y)/2+randb(-50,50)
-	add_object({group=list_particles,
+	add_object({group=list_projectiles,
 		x=p3_x,
 		y=p3_y,
 		collider_r=8,
@@ -1920,7 +1756,7 @@ template_basic_particle={
 
 template_explosion={
 	parent=template_basic_particle,
-	damage=10,
+	damage=15,
 	collider_r=10,
 	c1=7,
 	c2=7,
@@ -1948,18 +1784,18 @@ template_trail_particle={
 	collider_r_cycle={2,2},
 	fillp_cycle={0,0,0,0b0010001000100010.1,0b0011001100110011.1,0b1011101110111011.1},
 	//fillp_cycle={0,0,0,0b1010000010100000.1,0b1010010110100101.1,0b1011111010111110.1},
-	maxhp=0,
-	hp=0,
+	maxhp=15,
+	hp=15,
 	draw=function(self)
 		if cr_is_on_screen(self) then
-			--[[if self.fillp!= 0 then
+			if self.fillp!= 0 then
 			fillp(self.fillp)
 			circfill(self.x,self.y,self.collider_r,self.c1)
 			fillp()
-			else]]
+			else
 			circfill(self.x,self.y,self.collider_r,self.c1)
-		
-	end
+			end
+		end
 	end,
 	update={bh_tick_hp,bh_cycle_pallete_and_size},
 	on_death={remove_object}
@@ -2007,18 +1843,7 @@ template_text={
 }]]
 
 function bh_turn_faster(self)
-	local dist=get_distance(self,ship)
-	self.speed=self.maxspeed*2^(-dist/100)
-	self.turning_d=0.0005*10^(dist/60)
-	--[[
-	if(dist>=100) then
-
-		self.speed=ship.maxspeed/2
-		self.turning_d=0.03
-	else
-		self.speed=self.maxspeed
-		self.turning_d=0.001
-	end]]
+	self.turning_d=0.0005*15^(get_distance(self,ship)/80)
 end
 
 template_enemy={
@@ -2026,20 +1851,44 @@ template_enemy={
 	hp_pellets=1,
 	laser_pellets=1,
 	remove_if_far=true,
-	speed=1,
-	maxspeed=2,
+	speed=1.7,
+	maxspeed=1.7,
 	scale=0.8,
 	turning_d=0.001,
 	collider_r=5,
 	spr=6,
 	c1=4,
 	c2=0,
-	hp=12,
+	hp=20,
 	damage=6,
 	inv_damage=15,
 	is_parriable=true,
     draw=drw_enemy_rsprite,
 	update={bh_slow_down,bh_hitbox,bh_face_towards_ship,bh_fly_straight,bh_shoot,bh_turn_faster},
+	on_hit={oh_take_damage},
+	on_death={function() sfx(40,3) end,remove_object,od_raise_enemy_volume,od_drop_pellets,fx_explode},
+	on_parry={oh_knockback_self}
+	}
+
+template_enemy_shooter={
+	parent=template_enemy,
+	hp_pellets=1,
+	laser_pellets=1,
+	remove_if_far=true,
+	speed=0,
+	maxspeed=0,
+	scale=0.9,
+	turning_d=0.002,
+	collider_r=5,
+	spr=4,
+	c1=4,
+	c2=0,
+	hp=20,
+	damage=6,
+	inv_damage=15,
+	is_parriable=true,
+	draw=drw_enemy_rsprite,
+	update={bh_slow_down,bh_hitbox,bh_face_towards_ship,bh_shoot_missile},
 	on_hit={oh_take_damage},
 	on_death={function() sfx(40,3) end,remove_object,od_raise_enemy_volume,od_drop_pellets,fx_explode},
 	on_parry={oh_knockback_self}
@@ -2060,23 +1909,36 @@ template_snake={
 	snake_width=5,
 	sd_rate=0.95,
 	hp=20,
-	l=10,
+	l=18,
 	damage=8,
 	inv_damage=20,
 	laser_pellets=5,
 	is_parriable=true,
-	update={bh_snake_towards_ship,bh_slow_down,bh_hitbox,bh_update_snake},
+	update={bh_turn_faster,bh_snake_towards_ship,bh_slow_down,bh_hitbox,bh_update_snake},
     draw=drw_snake,
     on_hit={oh_take_damage},
 	on_death={fx_explode,od_die_snake,od_raise_enemy_volume,od_drop_pellets,function() background=13 outline=1 void=1 end},
 	on_parry={op_turnaround,oh_knockback_self,oh_knockback_other,fx_ff}
 	}
 
+
+
+	
+function od_spawn_explosion(self)
+	local expl=add_object({group=list_projectiles,
+	hp=5,
+	damage=15,
+	friendly=self.friendly,
+	x=self.x,
+	y=self.y},
+template_explosion)
+end
+
 template_enemy_fish=
 {	parent=template_enemy,
 	hp_pellets=2,
 	laser_pellets=1,
-	hp=3,
+	hp=1,
 	c1=0,
 	c2=1,
 	spr=3,
@@ -2084,10 +1946,11 @@ template_enemy_fish=
 	collider_r=3,
 	turning_d=0.05,
 	scale=0.5,
-	damage=3,
+	damage=1,
+	inv_damage=0,
 	update={bh_fish_towards_ship,bh_hitbox},
 	on_hit={oh_take_damage,oh_if_ship_then_die,function() sfx(41,3)end},
-	on_death={od_spawn_explosion,function() sfx(40,3)end,fx_explode,remove_object,od_raise_enemy_volume,od_drop_pellets},
+	on_death={function() sfx(40,3)end,fx_explode,remove_object,od_raise_enemy_volume,od_drop_pellets,od_spawn_explosion},
 	draw=drw_enemy_rsprite,
 	on_parry={fx_ff,deflect_fish,fx_explode}//oh_knockback_self}
 }
@@ -2121,16 +1984,24 @@ template_bullet_ship={
 	on_parry={}
 	}
 
+	function boss_continue(self,func)
+		if(self.hp>0) then
+			func(self)
+		else
+			background=(background+1)%16
+		end
+	end
+
 
 function bh_boss(self)
 	if not self.activated then
 		self.activated=true
 		music(21)
 		boss_unwind(self)
-		
 	end
-	
 end
+
+
 
 function boss_wander(self)
 	add_animation(function ()
@@ -2154,7 +2025,9 @@ function boss_wander(self)
 				yield()
 			end
 		end)
-		boss_charge(self)
+
+		boss_continue(self,boss_charge)
+		
 	end)
 end
 
@@ -2169,7 +2042,7 @@ function boss_charge(self)
 			yield() end
 		self.turning_d=0.001
 		self.speed=1
-		boss_wander(self)
+		boss_continue(self,boss_wander)
 		end) 
 end
 
@@ -2182,7 +2055,7 @@ function boss_unwind(self)
 			self.angle+=0.01-0.01*(i/160)^0.6
 			yield()
 		end 
-		boss_wander(self)
+		boss_continue(self,boss_wander)
 		end) 
 end
 
@@ -2204,38 +2077,43 @@ template_boss={
 
 
 
-function od_spawn_explosion(self)
-	local expl=add_object({group=list_particles,
-	hp=7,
-	friendly=self.friendly,
-	x=self.x,
-	y=self.y},
-template_explosion)
-end
-
 
 
 	
 
 	
-ship_d_o={
-	parent=template_empty,
-	c1=4,					
-	draw=function(self)
-		spr(112+32*flr(1.5+(1.4*sin(tt/250))),self.x-10,self.y-8,6,2)
-	end
-		}
+
+
+
+stage3={
+	name="Stage 3",
+	cards={{template_enemy,7,2},{template_enemy_fish,2,1},{template_boss,30,2}},
+	max_enemies=12,
+	volume=50,
+	goal=40
+}
+
+stage2={
+	name="Stage 2",
+	cards={{template_enemy,7,2},{template_enemy_fish,2,1},{template_enemy_shooter,30,2}},
+	max_enemies=12,
+	volume=50,
+	goal=30,
+	next=stage3
+}
 
 stage1={
-	cards={},
-
-	update={},
-	condition="ass",
-	next={}
+	name="Stage 1",
+	cards={{template_enemy_fish,0.5,1},{template_snake,45,1}},
+	max_enemies=20,
+	volume=50,
+	goal=30,
+	interval=20,
+	next=stage2
 }
 
 
--->8
+-->8xx
 //rspr, screenshake
 //collide, square, pifagor
 //randb
@@ -2436,14 +2314,14 @@ end
 
 
 __gfx__
-00000000111aa111111771111117711111888811000000000000000000c00c000007700000000000006c000000076c0000000000002220000088880000000000
-00000000111aa11111177111111771111188881100000000000aa0000111111007777770000000000c000000000000c000a0a000022222000800008000000000
-00700700111aa11111177111117ee711118cc811000cc00000aaaa0011c11c110777777000070000c00000000000000c00a0a000222722208880880800000000
-0007700011aaaa11117aa71111eeee1111cccc11000cc0000aaaaaa01cc11cc17777777700777000600000077000000c00a0a000227792208088000800000000
-0007700011aaaa11117aa711111ee111111cc11100cccc00aaeeeeaa1c1111c17777777777777770700000067000000600000000222922208008800800000000
-0070070011aaaa1111aaaa11111ee111111cc1110cccccc0eeeeeeee1111111107777770000000000000000cc00000000a000a00022222008080080800000000
-000000001aaaaaa11aaaaaa111eeee1111cccc11000000000ee00ee0111111110777777000000000000000c0060000000aaaaa00002220008800008800000000
-000000001aaaaaa11aaaaaa111e11e1111c11c110000000000000000011111100007700000000000000cc60000cc000000000000000000000888888000000000
+00000000111aa111111771111117711100e00e00000000000000000000c00c000007700000000000006c000000076c0000000000002220000088880000000000
+00000000111aa111111771111117711100e00e0000000000000aa0000111111007777770000000000c000000000000c000a0a000022222000800008000000000
+00700700111aa11111177111117ee71100e00e00000cc00000aaaa0011c11c110777777000070000c00000000000000c00a0a000222722208880880800000000
+0007700011aaaa11117aa71111eeee1100e00e00000cc0000aaaaaa01cc11cc17777777700777000600000077000000c00a0a000227792208088000800000000
+0007700011aaaa11117aa711111ee11100eaae0000cccc00aaeeeeaa1c1111c17777777777777770700000067000000600000000222922208008800800000000
+0070070011aaaa1111aaaa11111ee111eeeaaeee0cccccc0eeeeeeee1111111107777770000000000000000cc00000000a000a00022222008080080800000000
+000000001aaaaaa11aaaaaa111eeee110eeeeee0000000000ee00ee0111111110777777000000000000000c0060000000aaaaa00002220008800008800000000
+000000001aaaaaa11aaaaaa111e11e1100eeee000000000000000000011111100007700000000000000cc60000cc000000000000000000000888888000000000
 1eeee11011eeee100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 1eeeec101ceeee100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 1eeeecc0cceeee100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
