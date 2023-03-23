@@ -1,4 +1,9 @@
-//TODO make missile shooter a snake running away
+
+
+//TODO flying with laser bug
+//TODO html out of borders 
+//TODO boss doesnt spawn second time bug
+//TODO Sound
 
 
 

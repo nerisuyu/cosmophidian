@@ -31,6 +31,7 @@ list_animations={}
 
 function _init()
 	init_menu()
+	poke(0x5f2d, 1)
 	cam2={x=0,y=0}
 end
 
@@ -60,8 +61,8 @@ function draw_menu()
 	pal(7,play_btn_color)
 	spr(208,10,54,-2+tt/2,3)
 	print("press ❎ to play",30,90,play_btn_color)
-	print("Lynyrd Skynyrd-Free Bird edition",1,71+sin(tt/200)*1.9,12)
-	print("Lynyrd Skynyrd-Free Bird edition",0,71-sin(tt/200)*1.9,8)
+	print("lynyrd skynyrd-free bird edition",1,71+sin(tt/200)*1.9,12)
+	print("lynyrd skynyrd-free bird edition",0,71-sin(tt/200)*1.9,8)
 	
 	line(-6+8*tt/2,55,-6+8*tt/2,70,play_btn_color)
 end
@@ -166,7 +167,7 @@ function init_game()
 						hp=80,
 						maxhp=80,
 						regen=0.01,//0.02,
-						collider_r=10,
+						collider_r=13,
 						damage=2,
 						inv_damage=5,
 						angle=0.25,
@@ -181,7 +182,7 @@ function init_game()
 						nosex=0,
 						nosey=0,
 						acc=0.1,
-						lacc=0.008,
+						lacc=0.05,
 						dcc=0.007,//0.005
 						turning_d=0.1,
 						maxspeed=1.5,
@@ -204,8 +205,8 @@ function init_game()
 		parry_cd_value=40,
 	}
 	tt=-1
-	base_turning=0.02
-	fly_turning=0.005
+	base_turning=0.01
+	fly_turning=0.03
 	shoot_turning=0.02
 	laser_turning=0.003
 	laser={length=120,segments=9}
@@ -279,12 +280,13 @@ function draw_game()
 	draw_ship()
 	draw_ui()
 	
-	print(enemy_volume_max,cam.x-40,cam.y-64)
-	print(#list_enemies,cam.x-40,cam.y-58)
-	print(enemy_count_max,cam.x-30,cam.y-58)
-	print(enemy_points,cam.x-40,cam.y-52)
+	//print(enemy_volume_max,cam.x-40,cam.y-64)
+	//print(#list_enemies,cam.x-40,cam.y-58)
+	//print(enemy_count_max,cam.x-30,cam.y-58)
+	//print(enemy_points,cam.x-40,cam.y-52)
 	print(current_stage.name,cam.x-20,cam.y-64)
 	//print(#current_stage.cards,cam.x,cam.y)
+	circ(mouse.x,mouse.y,3,7)
 	
 end
 
@@ -293,7 +295,7 @@ function draw_ui()
 end
 
 
-health_circle_r=100
+health_circle_r=200
 function draw_health_circle()
 	local x=1-ship.hp/ship.maxhp
 	local current_r=92*(1-x^1.25)
@@ -303,7 +305,7 @@ function draw_health_circle()
 	
 
 	if current_r!=health_circle_r then
-	health_circle_r+=flr((current_r-health_circle_r)/2)
+		health_circle_r+=flr((current_r-health_circle_r)/2)
 	end
 	
 	circfill(ship.x,ship.y,health_circle_r,background)
@@ -322,7 +324,10 @@ end
 
 
 function upd_ship()
+	
+	
 	ship.states.parry_cd-=1
+	if(ship.states.parry_cd==0) then fx_dissolve(ship) end
 	ship.states.shooting_cd-=1
 
 	ship.turning_d=base_turning
@@ -339,7 +344,7 @@ function upd_ship()
 	end
 
 	if ship.states.shooting then
-		ship.turning_d=shoot_turning
+		//ship.turning_d=shoot_turning
 	end
 
 
@@ -430,6 +435,14 @@ function upd_ship()
 	
 	ship.ay=0 
 	ship.ax=0
+
+	local ac,as=trig(ship.angle)
+	local ff=(-ship.x+mouse.x)*as-(-ship.y+mouse.y)*ac
+	if ff>0 then
+			ship.angle+=ship.turning_d
+		else
+			ship.angle-=ship.turning_d
+		end
 	
 end
 
@@ -456,11 +469,13 @@ function draw_ship()
 			1,
 			ship.scale)]]
 end
-
+mouse={x=0,y=0}
 function handle_input()
+	mouse={x=cam.x-64+stat(32),y=cam.y-64+stat(33)}
 	ship.states.turning=0
 	ship.states.shooting=false
 	ship.states.laser=false
+	--[[
 	if btn(⬅️) and not btn(➡️) then 
 		ship.states.turning=1 
 	end
@@ -476,7 +491,17 @@ function handle_input()
 	else
 		ship.states.flying=false
 	end
-	if btn(⬇️) and ship.states.parry_cd <0 and (ship.laser_charge>ship.laser_cost or (ship.laser_charge>0 and ship.laser_charge-ship.laser_cost<=0))then
+	]]
+	if band(stat(34),0x1)==1 and not btn(⬇️) then 
+		if ship.states.flying ==false then 
+			sfx(30,3)
+		end
+		ship.states.flying=true
+		
+	else
+		ship.states.flying=false
+	end
+	if btn(❎) and ship.states.parry_cd <0 and (ship.laser_charge>ship.laser_cost or (ship.laser_charge>0 and ship.laser_charge-ship.laser_cost<=0))then
 		sfx(31,3)
 		ship.laser_charge-=ship.laser_cost
 		ship.states.laser=true
@@ -512,7 +537,7 @@ function handle_input()
 		ship.states.parry_cd=ship.states.parry_cd_value
 		end
 	end
-	if btn(❎) then
+	if band(stat(34),0x2)==2 then
 		ship.states.shooting=true
 	end
 end
@@ -674,41 +699,6 @@ function manage_player_collisions()
 			end
 		end
 	end
-
-		
-
-
-
-
-		--[[
-		if collide_p(p,ship) then 
-			if ship.states.parry>0 then
-				if p.is_parriable and 
-						p.invincible==0 then
-							for op in all(p.on_parry) do
-								op(p,ship)
-							end
-						end
-					else
-				if ship.invincible==0 then
-					for oh in all(p.on_hit) do
-						oh(p,ship)
-					end
-	
-					if p.is_pickup==true then
-						for op in all(ship.on_pickup) do
-								op(ship,p)
-						end
-					else
-						for oh in all(ship.on_hit) do
-							oh(ship,p)
-						end
-					end
-				end
-			end
-		end
-	end
-	]]
 end
 
 
@@ -831,13 +821,6 @@ function get_enemy_spawn_location()
 	return ass
 end
 
---[[
-function draw_average_position()
-	ass=get_enemy_spawn_location()
-	circ(ship.x+movement_vector.x,ship.y+movement_vector.y,10,0)
-	circ(ass.x,ass.y,20,7)
-end
-]]
 
 
 
@@ -1074,22 +1057,6 @@ function bh_hitbox(self)
 			add_enemy_collider(self)
 		end
 	end
-	--[[
-	if self.group==list_enemies then
-		if self.friendly==true then
-			add_friend_projectile_collider(self)
-		else
-			add_enemy_collider(self)
-		end
-		add_enemy_projectile_collider(self)
-	else
-		if self.friendly==true then
-			add_friend_projectile_collider(self)
-		else
-			a
-		end
-	end
-	]]
 end
 
 function bh_tick_hp(self)
@@ -1160,16 +1127,6 @@ function bh_update_snake(self)
 		self.segments[1].on_hit={}
 		//self.segments[2].collider_r=self.snake_width*0.8
 	end
-	--[[
-	local dist=get_distance(self,ship)
-	if(dist>=100) then 
-		self.speed=ship.maxspeed*2
-		self.turning_d=0.01
-	else
-		self.speed=self.maxspeed
-		self.turning_d=0.003
-	end
-	]]
 
 	local period=6
 	for i=2,#self.segments do 
@@ -1239,7 +1196,7 @@ end
 
 function bh_update_pellet(self)
 	add_enemy_projectile_collider(self)
-	if not btn(❎) then
+	if  band(stat(34),0x2)~=2 then
 		local a,dist=get_angle(self,ship),get_distance(self,ship)
 		local ac,as=trig(a)
 		self.dx=ac*self.speed*30*3^(-dist/100)
@@ -1251,16 +1208,20 @@ function bh_shoot(self)
 	if (tt+self.seed)%100==0 then 
 		sfx(39,3)
 		//shoot_missile(self,ship)
+		for i=0,2 do
 		add_object(
 			{group=list_projectiles,
 			friendly=false,
 			x=self.x,
 			y=self.y,
+			dx=randb(-10,10)/20,
+			dy=randb(-10,10)/20,
 			c1=7,
 			c2=outline,
 			angle=self.angle1 or self.angle,
 			on_death={fx_dissolve,remove_object}},
 			template_bullet)
+		end
 	end	
 end
 
@@ -1367,7 +1328,7 @@ function drw_snake(self)
 		end
 		//rspr(7,	self.x,self.y,self.angle,0,1)
 		pal()
-		print(self.hp,self.x+10,self.y+10)
+		//print(self.hp,self.x+10,self.y+10)
 end
 
 function drw_boss(self)
@@ -1483,40 +1444,11 @@ fades={
 	{13,13,5,5,2,1,1,0},
 	{14,9,9,4,5,2,1,0},
 	{15,14,9,4,5,2,1,0}}	--100 tokens
-	--[[
-	fades={
-		split"1,1,1,1,0,0,0,0",
-		split"2,2,2,1,1,0,0,0",
-		split"3,3,4,5,2,1,1,0",
-		split"4,4,2,2,1,1,1,0",
-		split"5,5,2,2,1,1,1,0",
-		split"6,6,13,5,2,1,1,0",
-		split"7,7,6,13,5,2,1,0",
-		split"8,8,9,4,5,2,1,0",
-		split"9,9,4,5,2,1,1,0",
-		split"10,15,9,4,5,2,1,0",
-		split"11,11,3,4,5,2,1,0",
-		split"12,12,13,5,5,2,1,0",
-		split"13,13,5,5,2,1,1,0",
-		split"14,9,9,4,5,2,1,0",
-		split"15,14,9,4,5,2,1,0"}
-		]]
+
 fadout_amount=0
 fadeout_args={fn=8,pn=15}
 fadeout_args.fc=1/fadeout_args.fn
---[[
-function fadeout(frames)
-	local fi=flr(fadout_amount/fadeout_args.fc)+1
-	for i=0,frames do
-		fi=flr(fadout_amount/fadeout_args.fc)+1
-		for n=1,fadeout_args.pn do
-			pal(n,fades[n][fi],1)
-		end
-		fadout_amount+=1/frames
-		  yield();
-	end
-end
-]]
+
 	
 function fx_shake(a)
 	shake_explode(0.2)
@@ -1907,7 +1839,7 @@ template_enemy={
 	update={bh_slow_down,bh_hitbox,bh_face_towards_ship,bh_fly_straight,bh_shoot,bh_turn_faster},
 	on_hit={oh_take_damage},
 	on_death={function() sfx(40,3) end,remove_object,od_raise_enemy_volume,od_drop_pellets,fx_explode},
-	on_parry={oh_knockback_self}
+	on_parry={deflect_fish}
 	}
 
 template_enemy_easier={
@@ -1970,10 +1902,10 @@ template_enemy_shooter={
 	parent=template_snake,
 	hp_pellets=4,
 	laser_pellets=1,
-	remove_if_far=false,
-	speed=1.2,
-	maxspeed=1.2,
-	scale=0.9,
+	remove_if_far=true,
+	speed=0.3,
+	maxspeed=0.3,
+	scale=1,
 	turning_d=0.002,
 	collider_r=5,
 	spr=4,
@@ -2032,13 +1964,13 @@ template_bullet={
 	hp=80,
 	c1=12,
 	c2=background,
-	speed=3,
+	speed=2,
 	is_parriable=true,
 	draw=drw_debug,
 	update={bh_fly_straight,bh_hitbox,bh_tick_hp},
 	on_hit={remove_object},
 	on_death={remove_object},
-	on_parry={op_deflect_bullet,function (self)self.damage*=3 sfx(34,3)end,fx_ff,fx_ff}
+	on_parry={op_deflect_bullet,function (self)self.damage*=3 self.speed*=2 sfx(34,3)end,fx_ff,fx_ff}
 	}		
 
 template_bullet_ship={
@@ -2046,6 +1978,7 @@ template_bullet_ship={
 	collider_r=3,
 	damage=4,
 	c1=8,
+	speed=3,
 	c2=outline,
 	is_parriable=false,
 	friendly=true,
@@ -2170,7 +2103,7 @@ template_boss={
 
 stage6={
 	name="stage 6",
-	cards={{template_enemy_shooter,25,4},{template_enemy_fish,1,1},{template_snake_small,4,2}},
+	cards={{template_enemy_shooter,25,4},{template_enemy_fish,5,1},{template_snake,15,2}},
 	max_enemies=15,
 	volume=50,
 	goal=40
@@ -2180,8 +2113,8 @@ stage6={
 	
 stage5={
 	name="stage 5",
-	cards={{template_enemy_shooter,25,4},{template_snake,15,5},{template_enemy,4,1}},
-	max_enemies=7,
+	cards={{template_enemy_shooter,40,4},{template_enemy,5,1}},
+	max_enemies=5,
 	volume=50,
 	goal=30,
 	next=stage6
@@ -2193,13 +2126,13 @@ stage4={
 	cards={{template_enemy_shooter,15,7}},
 	max_enemies=6,
 	volume=50,
-	goal=30,
+	goal=20,
 	next=stage5,
 }
 
 stage3={
 	name="stage 3",
-	cards={{template_snake,18,2},{template_snake_small,10,1},{template_enemy,8,1}},
+	cards={{template_snake,18,2},{template_snake_small,10,1},{template_enemy,12,2}},
 	max_enemies=5,
 	volume=50,
 	goal=20,
@@ -2218,7 +2151,7 @@ stage2={
 
 stage1={
 	name="stage 1",
-	cards={{template_enemy_easier,10,1},{template_snake_small,15,3}},
+	cards={{template_enemy_easier,10,1},{template_snake_small,20,3}},
 	max_enemies=5,
 	volume=30,
 	goal=15,
@@ -2231,32 +2164,7 @@ stage1={
 //rspr, screenshake
 //collide, square, pifagor
 //randb
---[[
-function rspr(sp,x,y,a,t,scale)
-	local ca,sa=trig(-a+0.25)
-	local sp_x=sp%16*8
-	local sp_y=flr(sp/16)*8
-	local pix=0
-	local kx=0 ky=0
-	for ix=-3,4 do
-		for iy=-3,4 do
-			pix=sget(sp_x+3+ix,sp_y+3+iy)
-			if(pix~=t)then
-				kx=x+ix ky=y+iy
-		 	pset(x+(ix*ca+iy*sa)*scale,
-		 		y+(iy*ca-ix*sa)*scale,
-		 		pix)
-		 	pset(x+0.5+(ix*ca+iy*sa)*scale,
-		 		y+0.5+(iy*ca-ix*sa)*scale,
-		 		pix)
-			pset(x-0.5+(ix*ca+iy*sa)*scale,
-		 		y-0.5+(iy*ca-ix*sa)*scale,
-		 		pix)
-			end
-		end
-	end
-end
-]]
+
 function rspr2(sprite,x,y,angle,transparent,pivot_x,pivot_y,x_len,y_len,scale)
 	local ca,sa=trig(-angle+0.25)
 	local sp_x=sprite%16*8
@@ -2273,85 +2181,7 @@ function rspr2(sprite,x,y,angle,transparent,pivot_x,pivot_y,x_len,y_len,scale)
 		end
 	end
 end
---[[
-function rspr3(sx,sy,x,y,a,w)
-    local ca,sa=cos(a),sin(a)
-    local srcx,srcy
-    local ddx0,ddy0=ca,sa
-    local mask=shl(0xfff8,(w-1))
-    w*=4
-    ca*=w-0.5
-    sa*=w-0.5
-    local dx0,dy0=sa-ca+w,-ca-sa+w
-    w=2*w-1
-    for ix=0,w do
-        srcx,srcy=dx0,dy0
-        for iy=0,w do
-            if band(bor(srcx,srcy),mask)==0 then
-                local c=sget(sx+srcx,sy+srcy)
-                pset(x+ix,y+iy,c)
-            end
-            srcx-=ddy0
-            srcy+=ddx0
-        end
-        dx0+=ddx0
-        dy0+=ddy0
-    end
-end
 
-function rspr4(i, j, x, y, w, h, flip_x, flip_y, pivot_x, pivot_y, angle, transparent_color)
-	-- precompute pixel values from tile indices: sprite source top-left, sprite size
-	local sx = 8 * i
-	local sy = 8 * j
-	local sw = 8 * w
-	local sh = 8 * h
-  
-	-- precompute angle trigonometry
-	local sa = sin(angle)
-	local ca = cos(angle)
-  
-	-- in the operations below, 0.5 offsets represent pixel "inside"
-	-- we let PICO-8 functions floor coordinates at the last moment for more symmetrical results
-  
-	-- precompute "target disc": where we must draw pixels of the rotated sprite (relative to (x, y))
-	-- the target disc ratio is the distance between the pivot the farthest corner of the sprite rectangle
-	local max_dx = max(pivot_x, sw - pivot_x) - 0.5 
-	local max_dy = max(pivot_y, sh - pivot_y) - 0.5
-	local max_sqr_dist = max_dx * max_dx + max_dy * max_dy
-	local max_dist_minus_half = ceil(sqrt(max_sqr_dist)) - 0.5
-  
-	-- iterate over disc's bounding box, then check if pixel is really in disc
-	for dx = - max_dist_minus_half, max_dist_minus_half do
-	  for dy = - max_dist_minus_half, max_dist_minus_half do
-		if dx * dx + dy * dy <= max_sqr_dist then
-		  -- prepare flip factors
-		  local sign_x = flip_x and -1 or 1
-		  local sign_y = flip_y and -1 or 1
-  
-		  -- if you don't use luamin (which has a bracket-related bug),
-		  -- you don't need those intermediate vars, you can just inline them if you want
-		  local rotated_dx = sign_x * ( ca * dx + sa * dy)
-		  local rotated_dy = sign_y * (-sa * dx + ca * dy)
-  
-		  local xx = pivot_x + rotated_dx
-		  local yy = pivot_y + rotated_dy
-  
-		  -- make sure to never draw pixels from the spritesheet
-		  --  that are outside the source sprite
-		  if xx >= 0 and xx < sw and yy >= 0 and yy < sh then
-			-- get source pixel
-			local c = sget(sx + xx, sy + yy)
-			-- ignore if transparent color
-			if c ~= transparent_color then
-			  -- set target pixel color to source pixel color
-			  pset(x + dx, y + dy, c)
-			end
-		  end
-		end
-	  end
-	end
-  end
-]]
 offset_g=0
 offset_e=0
 offset=0
