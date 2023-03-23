@@ -163,8 +163,8 @@ function init_game()
 	despawn_distance=180
 	ship={x=64,y=64,dx=0,dy=0,
 						ax=0,ay=0,
-						hp=60,
-						maxhp=60,
+						hp=80,
+						maxhp=80,
 						regen=0.01,//0.02,
 						collider_r=10,
 						damage=2,
@@ -278,14 +278,14 @@ function draw_game()
 	//rspr2(sprite,x,y,angle,transparent,pivot_x,pivot_y,x_len,y_len,scale)
 	draw_ship()
 	draw_ui()
-	--[[
+	
 	print(enemy_volume_max,cam.x-40,cam.y-64)
 	print(#list_enemies,cam.x-40,cam.y-58)
 	print(enemy_count_max,cam.x-30,cam.y-58)
 	print(enemy_points,cam.x-40,cam.y-52)
 	print(current_stage.name,cam.x-20,cam.y-64)
 	//print(#current_stage.cards,cam.x,cam.y)
-	print(current_stage.cards[1][3],cam.x,cam.y)]]
+	
 end
 
 function draw_ui()
@@ -369,7 +369,8 @@ function upd_ship()
 			ship.nosey,
 			ship.angle,
 			laser.length,
-			laser.segments)
+			laser.segments,
+			true)
 	
 		ship.ay-=ship.lacc*sin(ship.angle) 
 		ship.ax-=ship.lacc*cos(ship.angle) 
@@ -431,7 +432,6 @@ function upd_ship()
 	ship.ax=0
 	
 end
-
 
 
 
@@ -521,7 +521,7 @@ end
 //laser
 
 
-function fire_laser(x1,y1,a,l,l1)
+function fire_laser(x1,y1,a,l,l1,friendly)
 	local ca,sa=trig(a)
 	local hx,hy=(x1+l*ca-x1)/l1,(y1+l*sa-y1)/l1
 	for i=0,l1 do
@@ -534,7 +534,11 @@ function fire_laser(x1,y1,a,l,l1)
 				on_hit={},
 				on_death={},
 				invincible=0}
-		add_friend_projectile_collider(a)
+		if friendly==true then 
+			add_friend_projectile_collider(a)
+		else
+			add_enemy_projectile_collider(a)
+		end
 	end	
 end
 
@@ -542,7 +546,9 @@ function draw_laser(x,y,a,l)
 	local ca,sa=trig(a)
 	local x1,y1=x+l*ca,y+l*sa
 	//line(x,y,x1,y1,1)
-	decay_line(x,y,x1,y1,80,4,2,12)
+	//decay_line(x,y,x1,y1,80,4,2,12)
+	decay_line(x,y,x1,y1,80,8,2,12)
+	
 	decay_line(x,y,x1,y1,80,3,1,10)
 	decay_line(x,y,x1,y1,80,2,2,7)		
 end
@@ -859,16 +865,38 @@ end
 //enemies and snakes
 //stars, particles and projectiles
 function add_stars()
+	for i=0,15 do
+		local star={
+		x=randb(0,256),
+		y=randb(0,256),
+		d=randb(60,70)/100,
+		c=7,
+		move=randb(1,3)
+		}
+		add(list_stars,star)
+	end
+	for i=0,15 do
+		local star={
+		x=randb(0,256),
+		y=randb(0,256),
+		d=randb(40,60)/100,
+		c=6,
+		move=randb(1,3)
+		}
+		add(list_stars,star)
+	end
+
 	for i=0,30 do
 		local star={
 		x=randb(0,256),
 		y=randb(0,256),
 		d=randb(5,20)/100,
-		c=void,
+		c=2,
 		move=randb(1,3)
-	}
+		}
 		add(list_stars,star)
-		end
+	end
+	
 end
 
 
@@ -881,7 +909,7 @@ function draw_stars()
 		if x<cam.x-128 then i.x+=256 end
 		if y>cam.y+128 then i.y-=256 end
 		if y<cam.y-128 then i.y+=256 end
-		circfill(flr(x*2)/2,flr(y*2)/2,0.5/i.d,void)
+		circfill(flr(x*2)/2,flr(y*2)/2,0.5/i.d,i.c)
 	end
 end
 
@@ -1025,7 +1053,7 @@ end
 //can be invincible
 //can die
 function bh_remove_if_far_away(self,distance)
-	local d = 250 or distance
+	local d = 180 or distance
 	if  self.remove_if_far then
 		if get_distance(self,ship)>=d
 		then
@@ -1143,7 +1171,7 @@ function bh_update_snake(self)
 	end
 	]]
 
-	local period=8
+	local period=6
 	for i=2,#self.segments do 
 		add_enemy_collider(self.segments[i])
 		add_enemy_projectile_collider(self.segments[i])
@@ -1171,6 +1199,17 @@ end
 function bh_face_towards_ship(self)
 	local td=self.turning_d or 0.003
 	local ac,as=trig(self.angle)
+	local ff=(-self.x+ship.x)*as-(-self.y+ship.y)*ac
+	if ff>0 then
+			self.angle+=td
+		else
+			self.angle-=td
+		end
+end
+
+function bh_turn_away(self)
+	local td=self.turning_d or 0.003
+	local ac,as=trig(self.angle+0.25)
 	local ff=(-self.x+ship.x)*as-(-self.y+ship.y)*ac
 	if ff>0 then
 			self.angle+=td
@@ -1321,7 +1360,7 @@ function drw_snake(self)
 		pal(12,self.c2)
 		//rspr3(sx,sy,x,y,a,w)
 		if(cr_is_on_screen(self)) then 
-			rspr2(7,self.x,self.y,self.angle,0,3,3,7,7,1)
+			rspr2(self.spr,self.x,self.y,self.angle,0,3,3,7,7,1)
 			//rspr3(56,0,self.x,self.y,self.angle,1)
 			//rspr4(i, j, x, y, w, h, flip_x, flip_y, pivot_x, pivot_y, angle, transparent_color)
 			//rspr4(7, 0, self.x,self.y, 1, 1, 0, 0, 4, 4, self.angle, 0)
@@ -1630,6 +1669,7 @@ function spawn_boss(self)
 		template_empty)
 	add_animation(function ()
 			for i=0,200 do	
+				shake_explode(0.1)
 				red_circle.collider_r=i^1.5
 				white_circle.collider_r=min(20+3*sin(tt/1000),i^1.5)
 				for a in all(list_enemies)do
@@ -1756,8 +1796,8 @@ template_basic_particle={
 
 template_explosion={
 	parent=template_basic_particle,
-	damage=15,
-	collider_r=10,
+	damage=23,
+	collider_r=15,
 	c1=7,
 	c2=7,
 	draw=drw_debug,
@@ -1805,7 +1845,7 @@ template_pellet={
 	parent=template_basic_particle,
 	pals={{2,background}},
 	c1=9,
-	damage=-3,
+	damage=-5,
 	sd_rate=0.98,
 	c2=7,
 	hp=500,
@@ -1848,18 +1888,18 @@ end
 
 template_enemy={
 	parent=template_empty,
-	hp_pellets=1,
+	hp_pellets=3,
 	laser_pellets=1,
 	remove_if_far=true,
 	speed=1.7,
 	maxspeed=1.7,
-	scale=0.8,
+	scale=0.8, 
 	turning_d=0.001,
 	collider_r=5,
 	spr=6,
 	c1=4,
 	c2=0,
-	hp=20,
+	hp=15,
 	damage=6,
 	inv_damage=15,
 	is_parriable=true,
@@ -1870,57 +1910,85 @@ template_enemy={
 	on_parry={oh_knockback_self}
 	}
 
-template_enemy_shooter={
+template_enemy_easier={
 	parent=template_enemy,
-	hp_pellets=1,
-	laser_pellets=1,
-	remove_if_far=true,
-	speed=0,
-	maxspeed=0,
-	scale=0.9,
-	turning_d=0.002,
-	collider_r=5,
-	spr=4,
-	c1=4,
-	c2=0,
-	hp=20,
-	damage=6,
-	inv_damage=15,
-	is_parriable=true,
-	draw=drw_enemy_rsprite,
-	update={bh_slow_down,bh_hitbox,bh_face_towards_ship,bh_shoot_missile},
-	on_hit={oh_take_damage},
-	on_death={function() sfx(40,3) end,remove_object,od_raise_enemy_volume,od_drop_pellets,fx_explode},
-	on_parry={oh_knockback_self}
-	}
+	speed=1.2
+}
 
+function bh_chase(self)
+	local dist=get_distance(self,ship)
+	if(dist>=100) then
+		self.speed=ship.maxspeed*2
+		self.turning_d=0.01
+	else
+		self.speed=self.maxspeed
+		self.turning_d=0.003
+	end
+end
 
 template_snake={
 	parent=template_empty,
-	maxspeed=1.3,
+	maxspeed=1.6,
 	speed=1,
 	volume=2,
+	spr=7,
 	collider_r=5,
 	turning_d=0.002,
 	sp=2,
-	c1=10,
+	c1=14,
 	c2=8,
-	c3=0,
-	snake_width=5,
+	c3=8,
+	snake_width=6,
 	sd_rate=0.95,
-	hp=20,
-	l=18,
+	hp=40,
+	l=25,
 	damage=8,
 	inv_damage=20,
 	laser_pellets=5,
 	is_parriable=true,
-	update={bh_turn_faster,bh_snake_towards_ship,bh_slow_down,bh_hitbox,bh_update_snake},
+	update={bh_chase,bh_turn_faster,bh_snake_towards_ship,bh_slow_down,bh_hitbox,bh_update_snake},
     draw=drw_snake,
     on_hit={oh_take_damage},
 	on_death={fx_explode,od_die_snake,od_raise_enemy_volume,od_drop_pellets,function() background=13 outline=1 void=1 end},
 	on_parry={op_turnaround,oh_knockback_self,oh_knockback_other,fx_ff}
 	}
 
+template_snake_small={
+	parent=template_snake,
+	remove_if_far=true,
+	l=15,
+	c1=14,
+	c3=14,
+	c2=8,
+	hp=20,
+	snake_width=4,
+	update={bh_turn_faster,bh_snake_towards_ship,bh_slow_down,bh_hitbox,bh_update_snake}
+}
+
+
+template_enemy_shooter={
+	parent=template_snake,
+	hp_pellets=4,
+	laser_pellets=1,
+	remove_if_far=false,
+	speed=1.2,
+	maxspeed=1.2,
+	scale=0.9,
+	turning_d=0.002,
+	collider_r=5,
+	spr=4,
+	l=5,
+	c1=9,
+	c2=8,
+	c3=9,
+	hp=20,
+	is_parriable=true,
+	draw=drw_snake,
+	update={bh_slow_down,bh_hitbox,bh_turn_away,bh_fly_straight,bh_shoot_missile,bh_update_snake},
+	on_hit={oh_take_damage},
+	on_death={function() sfx(40,3) end,remove_object,od_raise_enemy_volume,od_drop_pellets,fx_explode},
+	on_parry={oh_knockback_self}
+	}
 
 
 	
@@ -1959,8 +2027,8 @@ template_bullet={
 	parent=template_empty,
 	group=list_projectiles,
 	collider_r=3,
-	damage=5,
-	inv_damage=10,
+	damage=8,
+	inv_damage=15,
 	hp=80,
 	c1=12,
 	c2=background,
@@ -1970,7 +2038,7 @@ template_bullet={
 	update={bh_fly_straight,bh_hitbox,bh_tick_hp},
 	on_hit={remove_object},
 	on_death={remove_object},
-	on_parry={op_deflect_bullet,function ()sfx(34,3)end,fx_ff,fx_ff}
+	on_parry={op_deflect_bullet,function (self)self.damage*=3 sfx(34,3)end,fx_ff,fx_ff}
 	}		
 
 template_bullet_ship={
@@ -1984,13 +2052,7 @@ template_bullet_ship={
 	on_parry={}
 	}
 
-	function boss_continue(self,func)
-		if(self.hp>0) then
-			func(self)
-		else
-			background=(background+1)%16
-		end
-	end
+
 
 
 function bh_boss(self)
@@ -2001,6 +2063,33 @@ function bh_boss(self)
 	end
 end
 
+function boss_continue(self,func)
+	if(self.hp>0) then
+		func(self)
+	else
+		background=(background+1)%16
+	end
+end
+
+function boss_laser(self)
+	add_animation(function ()
+		self.turning_d=0.002
+		self.speed=0.002
+		add_object({
+				group=list_projectiles,
+				hp=80,
+				draw=function ()
+					draw_laser(self.x,self.y,self.angle,150)
+				end}
+				,template_basic_particle) 
+		for i=0,80 do 
+			yield()
+			fire_laser(self.x,self.y,self.angle,150,10,false)
+		end
+		self.speed=1
+		boss_continue(self,boss_wander)
+		end) 
+end
 
 
 function boss_wander(self)
@@ -2025,9 +2114,11 @@ function boss_wander(self)
 				yield()
 			end
 		end)
-
-		boss_continue(self,boss_charge)
-		
+		if(get_distance(self,ship)>=100) then 
+			boss_continue(self,boss_charge)
+		else 
+			boss_continue(self,boss_laser)
+		end
 	end)
 end
 
@@ -2051,6 +2142,7 @@ function boss_unwind(self)
 	add_animation(function ()
 		self.turning_d=0
 		self.speed=2
+		self.invincible=160
 		for i=0,160 do
 			self.angle+=0.01-0.01*(i/160)^0.6
 			yield()
@@ -2065,7 +2157,7 @@ end
 template_boss={
 	c1=7,c2=8,c3=7,
 	l=70,
-	hp=80,
+	hp=160,
 	turning_d=0.001,
 	maxspeed=1.3,
 	speed=1,
@@ -2076,39 +2168,61 @@ template_boss={
 }
 
 
-
-
-
-	
-
-	
-
-
-
-stage3={
-	name="Stage 3",
-	cards={{template_enemy,7,2},{template_enemy_fish,2,1},{template_boss,30,2}},
-	max_enemies=12,
+stage6={
+	name="stage 6",
+	cards={{template_enemy_shooter,25,4},{template_enemy_fish,1,1},{template_snake_small,4,2}},
+	max_enemies=15,
 	volume=50,
 	goal=40
 }
 
-stage2={
-	name="Stage 2",
-	cards={{template_enemy,7,2},{template_enemy_fish,2,1},{template_enemy_shooter,30,2}},
-	max_enemies=12,
+
+	
+stage5={
+	name="stage 5",
+	cards={{template_enemy_shooter,25,4},{template_snake,15,5},{template_enemy,4,1}},
+	max_enemies=7,
 	volume=50,
 	goal=30,
+	next=stage6
+}
+	
+
+stage4={
+	name="stage 4",
+	cards={{template_enemy_shooter,15,7}},
+	max_enemies=6,
+	volume=50,
+	goal=30,
+	next=stage5,
+}
+
+stage3={
+	name="stage 3",
+	cards={{template_snake,18,2},{template_snake_small,10,1},{template_enemy,8,1}},
+	max_enemies=5,
+	volume=50,
+	goal=20,
+	next=stage4
+}
+
+stage2={
+	name="stage 2",
+	cards={{template_enemy_fish,0.5,1},{template_snake,30,1}},
+	max_enemies=20,
+	volume=50,
+	goal=50,
+	interval=20,
 	next=stage3
 }
 
 stage1={
-	name="Stage 1",
-	cards={{template_enemy_fish,0.5,1},{template_snake,45,1}},
-	max_enemies=20,
-	volume=50,
-	goal=30,
-	interval=20,
+	name="stage 1",
+	cards={{template_enemy_easier,10,1},{template_snake_small,15,3}},
+	max_enemies=5,
+	volume=30,
+	goal=15,
+	interval=60,
 	next=stage2
 }
 
@@ -2314,14 +2428,14 @@ end
 
 
 __gfx__
-00000000111aa111111771111117711100e00e00000000000000000000c00c000007700000000000006c000000076c0000000000002220000088880000000000
-00000000111aa111111771111117711100e00e0000000000000aa0000111111007777770000000000c000000000000c000a0a000022222000800008000000000
-00700700111aa11111177111117ee71100e00e00000cc00000aaaa0011c11c110777777000070000c00000000000000c00a0a000222722208880880800000000
-0007700011aaaa11117aa71111eeee1100e00e00000cc0000aaaaaa01cc11cc17777777700777000600000077000000c00a0a000227792208088000800000000
-0007700011aaaa11117aa711111ee11100eaae0000cccc00aaeeeeaa1c1111c17777777777777770700000067000000600000000222922208008800800000000
-0070070011aaaa1111aaaa11111ee111eeeaaeee0cccccc0eeeeeeee1111111107777770000000000000000cc00000000a000a00022222008080080800000000
-000000001aaaaaa11aaaaaa111eeee110eeeeee0000000000ee00ee0111111110777777000000000000000c0060000000aaaaa00002220008800008800000000
-000000001aaaaaa11aaaaaa111e11e1100eeee000000000000000000011111100007700000000000000cc60000cc000000000000000000000888888000000000
+00000000111aa111111771111117711100900900000000000000000000c00c000007700000000000006c000000076c0000000000002220000088880000000000
+00000000111aa11111177111111771110090090000000000000aa0000111111007777770000000000c000000000000c000a0a000022222000800008000000000
+00700700111aa11111177111117ee71100900900000cc00000aaaa0011c11c110777777000070000c00000000000000c00a0a000222722208880880800000000
+0007700011aaaa11117aa71111eeee1100900900000cc0000aaaaaa01cc11cc17777777700777000600000077000000c00a0a000227792208088000800000000
+0007700011aaaa11117aa711111ee111009aa90000cccc00aaeeeeaa1c1111c17777777777777770700000067000000600000000222922208008800800000000
+0070070011aaaa1111aaaa11111ee111999aa9990cccccc0eeeeeeee1111111107777770000000000000000cc00000000a000a00022222008080080800000000
+000000001aaaaaa11aaaaaa111eeee1109999990000000000ee00ee0111111110777777000000000000000c0060000000aaaaa00002220008800008800000000
+000000001aaaaaa11aaaaaa111e11e11009999000000000000000000011111100007700000000000000cc60000cc000000000000000000000888888000000000
 1eeee11011eeee100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 1eeeec101ceeee100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 1eeeecc0cceeee100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000

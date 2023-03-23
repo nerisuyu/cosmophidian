@@ -1,10 +1,20 @@
+//TODO make missile shooter a snake running away
 
 
 
-//TODO enemy spawning
+//TODO more stages
+
+//TODO оформить страничку
+//TODO boss laser charging
+
 //TODO boss death credits
 //TODO boss health and name ui
-//TODO snake parry
+
+
+
+
+//TODO balance pellets
+
 //TODO hitboxes in jaws?...
 //boss moves
 release fishes
