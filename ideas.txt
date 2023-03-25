@@ -1,7 +1,6 @@
 
 //TODO parry and dash on different buttons
 
-//TODO Sound
 
 //TODO оформить страничку
 //TODO boss laser charging
