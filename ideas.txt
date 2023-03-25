@@ -1,26 +1,16 @@
 
+//TODO parry and dash on different buttons
 
-//TODO flying with laser bug
-//TODO html out of borders 
-//TODO boss doesnt spawn second time bug
 //TODO Sound
-
-
-
-//TODO more stages
 
 //TODO оформить страничку
 //TODO boss laser charging
 
-//TODO boss death credits
-//TODO boss health and name ui
 
 
 
 
-//TODO balance pellets
 
-//TODO hitboxes in jaws?...
 //boss moves
 release fishes
 charge

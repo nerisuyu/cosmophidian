@@ -49,7 +49,6 @@ function init_menu()
 	list_animations={}
 	play_btn_color=7
 	
-	//poke(0x5f2d, 1)
 	music(1,100,5)
 	camera()
 	tt=0
@@ -61,9 +60,6 @@ function draw_menu()
 	pal(7,play_btn_color)
 	spr(208,10,54,-2+tt/2,3)
 	print("press ❎ to play",30,90,play_btn_color)
-	print("lynyrd skynyrd-free bird edition",1,71+sin(tt/200)*1.9,12)
-	print("lynyrd skynyrd-free bird edition",0,71-sin(tt/200)*1.9,8)
-	
 	line(-6+8*tt/2,55,-6+8*tt/2,70,play_btn_color)
 end
 
@@ -81,9 +77,6 @@ function update_menu()
 				yield()
 			end
 			play_btn_color=7
-			for i=0,10 do
-				yield()
-			end
 			end)
 		add_animation(function ()
 			for i=0,40 do
@@ -99,7 +92,11 @@ end
 
 
 
-
+function apply_fadeout()
+	for n=1,15 do
+		pal(n,fades[n][flr(fageout_amount*8)+1],1)
+	end
+end
 
 function init_game_over()
 	
@@ -107,18 +104,12 @@ function init_game_over()
 	_draw=update_game_over
 	add_animation(function ()
 		for i=0,100 do
-			fi=flr(fadout_amount/fadeout_args.fc)+1
-			for n=1,fadeout_args.pn do
-				pal(n,fades[n][fi],1)
-			end
+			apply_fadeout()
 			yield()
-			fadout_amount+=0.01
+			fageout_amount+=0.01
 		end
-		fadout_amount=0
-		fi=flr(fadout_amount/fadeout_args.fc)+1
-		for n=1,fadeout_args.pn do
-			pal(n,fades[n][fi],1)
-		end
+		fageout_amount=0
+		apply_fadeout()
 		init_menu()
 	end)
 end
@@ -151,7 +142,7 @@ end
 
 
 function init_game()
-
+	boss_spawned=false
 	music(5,100,5)
 	load_stage(stage1)
 	list_stars={}
@@ -164,8 +155,8 @@ function init_game()
 	despawn_distance=180
 	ship={x=64,y=64,dx=0,dy=0,
 						ax=0,ay=0,
-						hp=80,
-						maxhp=80,
+						hp=60,
+						maxhp=60,
 						regen=0.01,//0.02,
 						collider_r=13,
 						damage=2,
@@ -181,9 +172,9 @@ function init_game()
 						laser_charge_threshold=15,
 						nosex=0,
 						nosey=0,
-						acc=0.1,
+						acc=0.07,
 						lacc=0.05,
-						dcc=0.007,//0.005
+						dcc=0.004,//0.007
 						turning_d=0.1,
 						maxspeed=1.5,
 						scale=0.5,
@@ -205,7 +196,7 @@ function init_game()
 		parry_cd_value=40,
 	}
 	tt=-1
-	base_turning=0.01
+	base_turning=0.03
 	fly_turning=0.03
 	shoot_turning=0.02
 	laser_turning=0.003
@@ -280,18 +271,20 @@ function draw_game()
 	draw_ship()
 	draw_ui()
 	
-	//print(enemy_volume_max,cam.x-40,cam.y-64)
-	//print(#list_enemies,cam.x-40,cam.y-58)
-	//print(enemy_count_max,cam.x-30,cam.y-58)
-	//print(enemy_points,cam.x-40,cam.y-52)
-	print(current_stage.name,cam.x-20,cam.y-64)
-	//print(#current_stage.cards,cam.x,cam.y)
+	
+	
+	
+
 	circ(mouse.x,mouse.y,3,7)
 	
 end
 
 function draw_ui()
 	rectfill(cam.x-65,cam.y+64,cam.x-65+128*(ship.laser_charge)/ship.laser_charge_max,cam.y+60,12)
+	if not boss_spawned then 
+		rectfill(cam.x-65,cam.y-64,cam.x-65+128*(enemy_points)/current_stage.goal,cam.y-60,8)
+		print(current_stage.name,cam.x-20,cam.y-64,7)
+	end
 end
 
 
@@ -492,7 +485,7 @@ function handle_input()
 		ship.states.flying=false
 	end
 	]]
-	if band(stat(34),0x1)==1 and not btn(⬇️) then 
+	if band(stat(34),0x2)==2 and not btn(❎) then 
 		if ship.states.flying ==false then 
 			sfx(30,3)
 		end
@@ -537,7 +530,7 @@ function handle_input()
 		ship.states.parry_cd=ship.states.parry_cd_value
 		end
 	end
-	if band(stat(34),0x2)==2 then
+	if band(stat(34),0x1)==1 then
 		ship.states.shooting=true
 	end
 end
@@ -1196,7 +1189,7 @@ end
 
 function bh_update_pellet(self)
 	add_enemy_projectile_collider(self)
-	if  band(stat(34),0x2)~=2 then
+	if  band(stat(34),0x1)~=1 then
 		local a,dist=get_angle(self,ship),get_distance(self,ship)
 		local ac,as=trig(a)
 		self.dx=ac*self.speed*30*3^(-dist/100)
@@ -1345,6 +1338,8 @@ function drw_boss(self)
 	end
 	pal()
 	drw_snake_body(self)
+	rectfill(cam.x-65,cam.y-64,cam.x-65+128*(self.hp)/self.maxhp,cam.y-58,2)
+	print("the pale queen",cam.x-20,cam.y-63,7)
 end
 
 function drw_debug(self)
@@ -1445,10 +1440,11 @@ fades={
 	{14,9,9,4,5,2,1,0},
 	{15,14,9,4,5,2,1,0}}	--100 tokens
 
-fadout_amount=0
-fadeout_args={fn=8,pn=15}
-fadeout_args.fc=1/fadeout_args.fn
-
+fageout_amount=0
+--[[
+fadeout_args_fn,fadeout_args_pn=8,15
+fadeout_args_fc=1/fadeout_args_fn
+]]
 	
 function fx_shake(a)
 	shake_explode(0.2)
@@ -1619,8 +1615,8 @@ function spawn_boss(self)
 			background=8
 			void=0
 			outline=0
-			red_circle.hp=0
-			white_circle.hp=0
+			remove_object(red_circle)
+			remove_object(white_circle)
 			
 			add_object({group=list_enemies,x=self.x,y=self.y},template_boss)
 			
@@ -1641,11 +1637,10 @@ function shoot_missile(self,other)
 	add_object({group=list_projectiles,
 		x=p3_x,
 		y=p3_y,
-		collider_r=8,
 		collider_r_cycle={8,8,7,6,4,1},
 		pallete_cycle={10,9,8},
-		hp=template_missile.hp,
-		maxhp=template_missile.hp,
+		hp= lifespan,
+		maxhp=lifespan,
 		update={bh_tick_hp,bh_cycle_pallete_and_size},
 		draw=function(self)
 			circ(self.x,self.y,self.collider_r,self.c1) 
@@ -1659,7 +1654,6 @@ function shoot_missile(self,other)
 			yield();
 			end
 		local expl=add_object({group=list_particles,
-			hp=5,
 			x=p3_x,
 			y=p3_y},
 		template_explosion)
@@ -1729,6 +1723,7 @@ template_basic_particle={
 template_explosion={
 	parent=template_basic_particle,
 	damage=23,
+	hp=5,
 	collider_r=15,
 	c1=7,
 	c2=7,
@@ -1881,7 +1876,7 @@ template_snake={
 	update={bh_chase,bh_turn_faster,bh_snake_towards_ship,bh_slow_down,bh_hitbox,bh_update_snake},
     draw=drw_snake,
     on_hit={oh_take_damage},
-	on_death={fx_explode,od_die_snake,od_raise_enemy_volume,od_drop_pellets,function() background=13 outline=1 void=1 end},
+	on_death={fx_explode,od_die_snake,od_raise_enemy_volume,od_drop_pellets},
 	on_parry={op_turnaround,oh_knockback_self,oh_knockback_other,fx_ff}
 	}
 
@@ -1926,7 +1921,6 @@ template_enemy_shooter={
 	
 function od_spawn_explosion(self)
 	local expl=add_object({group=list_projectiles,
-	hp=5,
 	damage=15,
 	friendly=self.friendly,
 	x=self.x,
@@ -1952,8 +1946,8 @@ template_enemy_fish=
 	on_hit={oh_take_damage,oh_if_ship_then_die,function() sfx(41,3)end},
 	on_death={function() sfx(40,3)end,fx_explode,remove_object,od_raise_enemy_volume,od_drop_pellets,od_spawn_explosion},
 	draw=drw_enemy_rsprite,
-	on_parry={fx_ff,deflect_fish,fx_explode}//oh_knockback_self}
-}
+	on_parry={fx_ff,deflect_fish,fx_explode}}
+
 
 template_bullet={
 	parent=template_empty,
@@ -1975,7 +1969,6 @@ template_bullet={
 
 template_bullet_ship={
 	parent=template_bullet,
-	collider_r=3,
 	damage=4,
 	c1=8,
 	speed=3,
@@ -1999,8 +1992,6 @@ end
 function boss_continue(self,func)
 	if(self.hp>0) then
 		func(self)
-	else
-		background=(background+1)%16
 	end
 end
 
@@ -2091,12 +2082,27 @@ template_boss={
 	c1=7,c2=8,c3=7,
 	l=70,
 	hp=160,
+	maxhp=160,
 	turning_d=0.001,
 	maxspeed=1.3,
 	speed=1,
 	snake_width=9,
 	parent=template_snake,
 	draw=drw_boss,
+	on_death={fx_explode,od_die_snake,od_drop_pellets,
+		function() 
+			background=13 
+			outline=1 
+			void=1
+			add_object({
+				group=list_projectiles,
+				hp=600,
+				draw=function (self)
+					print("The wicked bitch is gone",cam.x-40,cam.y-20,0)
+				end,
+				on_death={remove_object,init_menu}
+			},template_basic_particle) 
+		end},
 	update={bh_snake_towards_ship,bh_slow_down,bh_hitbox,bh_update_snake,bh_boss},
 }
 
